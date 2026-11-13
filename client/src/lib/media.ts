@@ -38,6 +38,7 @@ interface Snapshot {
 class MediaMesh {
   private peers = new Map<string, Peer>();
   private iceServers: RTCIceServer[] | null = null;
+  private iceRefreshAt = 0;
   /** Last peer list from the server, replayed once we know who we are. */
   private lastPeers: RtcPeer[] = [];
   /** Signals from peers whose connection we have not opened yet. */
@@ -79,13 +80,17 @@ class MediaMesh {
     this.syncMeters();
   }
 
+  /** ICE servers, refetched an hour before the TURN credential expires (long game nights). */
   private async config(): Promise<RTCIceServer[]> {
-    if (this.iceServers) return this.iceServers;
+    if (this.iceServers && Date.now() < this.iceRefreshAt) return this.iceServers;
     try {
       const res = await fetch('/api/rtc-config');
-      this.iceServers = (await res.json()).iceServers as RTCIceServer[];
+      const body = await res.json() as { iceServers: RTCIceServer[]; expiresAt?: number };
+      this.iceServers = body.iceServers;
+      this.iceRefreshAt = body.expiresAt ? body.expiresAt - 3600_000 : Infinity;
     } catch {
-      this.iceServers = [{ urls: 'stun:stun.l.google.com:19302' }];
+      this.iceServers ??= [{ urls: 'stun:stun.l.google.com:19302' }];
+      this.iceRefreshAt = Date.now() + 60_000;
     }
     return this.iceServers;
   }
@@ -139,7 +144,13 @@ class MediaMesh {
       this.emit();
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed') pc.restartIce();
+      if (pc.connectionState !== 'failed') return;
+      // The relay may have dropped us because the TURN credential expired: restart with fresh ones.
+      void this.config().then((iceServers) => {
+        if (pc.connectionState === 'closed') return;
+        try { pc.setConfiguration({ ...pc.getConfiguration(), iceServers }); } catch { /* keep old config */ }
+        pc.restartIce();
+      });
     };
     this.attachLocal(peer);
     const queued = this.pending.get(info.socketId);

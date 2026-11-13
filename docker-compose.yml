@@ -33,6 +33,10 @@ services:
       - --external-ip=${PUBLIC_IP}
       - --min-port=49160
       - --max-port=49200
+      # Caps for a home game. The 41 relay ports above are already a hard ceiling on allocations.
+      - --max-bps=500000                    # ~4 Mbit/s per allocation; a 640x480 camera uses ~1-1.5 Mbit/s
+      - --user-quota=20                     # allocations per credential (one browser: 2 per peer, UDP + TCP)
+      - --total-quota=40
       - --no-cli
       - --no-tls
       - --no-dtls

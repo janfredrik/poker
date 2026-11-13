@@ -56,6 +56,8 @@ Open http://localhost:5173. Camera and microphone work on `localhost` without HT
 
    Do not expose `3000`; only nginx on the LAN talks to it. coturn uses host networking, so its ports land directly on the Unraid IP.
 
+The compose file caps coturn at ~4 Mbit/s per relay allocation and 40 allocations in total (`--max-bps`, `--user-quota`, `--total-quota`); the 41 relay ports are a hard ceiling anyway. Widen the port range and raise `--total-quota` together if a big table runs out.
+
 Without the TURN ports most players still connect peer-to-peer; the relay is for those behind strict NAT or mobile networks. If you don't want video at all, remove the `coturn` service.
 
 ### Behind Cloudflare
@@ -79,7 +81,7 @@ Health check: `GET /api/health`.
 | `DATA_DIR` | `/data` | Tables, ledgers, rule sets |
 | `STUN_URLS` | Google STUN | Comma-separated |
 | `TURN_URLS` | none | Comma-separated `turn:` URLs (compose builds them from `TURN_HOST`) |
-| `TURN_SECRET` | none | Shared with coturn `static-auth-secret` |
+| `TURN_SECRET` | none | Shared with coturn `static-auth-secret`. Credentials handed to browsers last 6 hours and are refreshed automatically |
 | `TABLE_TTL_DAYS` | `14` | Idle tables are deleted after this |
 
 ## Development

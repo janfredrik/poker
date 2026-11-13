@@ -42,6 +42,9 @@ app.use(express.json({ limit: '64kb' }));
 
 app.get('/api/health', (_req, res) => { res.json({ ok: true, tables: tables.size }); });
 
+/** Lifetime of a TURN credential. Clients refetch before it runs out. */
+const TURN_TTL_S = 6 * 3600;
+
 /** ICE servers for WebRTC. TURN credentials follow coturn's use-auth-secret (REST API) scheme. */
 app.get('/api/rtc-config', (_req, res) => {
   const iceServers: RTCIceServerLike[] = [];
@@ -49,12 +52,15 @@ app.get('/api/rtc-config', (_req, res) => {
   if (stun.length) iceServers.push({ urls: stun });
   const turnUrls = (process.env.TURN_URLS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const secret = process.env.TURN_SECRET;
+  let expiresAt: number | undefined;
   if (turnUrls.length && secret) {
-    const username = `${Math.floor(Date.now() / 1000) + 12 * 3600}:poker`;
+    const expiry = Math.floor(Date.now() / 1000) + TURN_TTL_S;
+    const username = `${expiry}:poker`;
     const credential = createHmac('sha1', secret).update(username).digest('base64');
     iceServers.push({ urls: turnUrls, username, credential });
+    expiresAt = expiry * 1000;
   }
-  res.json({ iceServers });
+  res.json({ iceServers, expiresAt });
 });
 
 app.get('/api/rulesets', (_req, res) => { res.json(listRuleSets()); });
