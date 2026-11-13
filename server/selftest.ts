@@ -122,6 +122,24 @@ async function run(seed: number, nPlayers: number, rulesIdx: number) {
   assert(JSON.stringify(places) === '[1,2,3,4]', `places assigned: ${places}`);
   const res = t.view(ps[0].id).results!;
   assert(res.pool === 1200 && res.places[0].prize === 1200 && res.places[0].playerId === ps.find((p) => p.place === 1)!.id, 'winner gets the pool');
+  const { formatResults } = await import('../client/src/lib/results');
+  const [winner, second, third, fourth] = [...ps].sort((a, b) => a.place! - b.place!);
+  t.leaveSeat(fourth);
+  fourth.connections = 0;
+  const view = t.view(winner.id);
+  const summary = formatResults(view);
+  for (const p of [second, third, fourth]) {
+    assert(summary.includes(`${p.name} pays me (${winner.name}) 300 kr`), 'each loser pays the winner, including departed players');
+  }
+  assert(!formatResults(t.view(null)).includes('pays me'), 'spectator copy names the recipients');
+  assert(!formatResults({ ...view, results: null }).includes('Settlement'), 'standings only with payouts off');
+  // Net amounts +200, +100, -300 and 0 require a split payment.
+  const split = formatResults({ ...view, results: { ...res,
+    paid: { [winner.id]: 300, [second.id]: 300, [third.id]: 300, [fourth.id]: 0 },
+    pool: 900, places: res.places.map((p, i) => ({ ...p, prize: [500, 400, 0][i] })),
+  } });
+  assert(split.includes(`${third.name} pays me (${winner.name}) 200 kr\n${third.name} pays ${second.name} 100 kr`), 'split payment settles both net winners');
+  assert(split.split(' pays ').length === 3, 'break-even players owe nothing');
   t.dispose();
 }
 

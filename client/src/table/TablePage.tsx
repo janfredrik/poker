@@ -5,6 +5,7 @@ import { formatChips } from '../../../shared/presets';
 import { call, prefs, socket, tokens } from '../lib/socket';
 import { mesh, useMedia, useNow } from '../lib/media';
 import { chipSound, unlockAudio, yourTurnSound } from '../lib/sound';
+import { formatResults } from '../lib/results';
 import { PlayingCard } from './Card';
 import { ChipStack, setChipScale } from './Chips';
 import { Dock } from './Dock';
@@ -54,6 +55,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const [sitAt, setSitAt] = useState<number | null>(null);
   const [rebuyOpen, setRebuyOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [manualCopy, setManualCopy] = useState('');
   const [seenLog, setSeenLog] = useState(0);
   const [connected, setConnected] = useState(socket.connected);
   const [phoneOpen, setPhoneOpen] = useState(false);
@@ -213,6 +215,16 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const copyResults = async () => {
+    const text = formatResults(view);
+    try {
+      await navigator.clipboard.writeText(text);
+      setToast('Results copied');
+    } catch {
+      setManualCopy(text);
+    }
+  };
+
   const sit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -283,6 +295,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 )}
                 <div className="felt__actions">
                   <button className="btn btn--quiet" onClick={() => { setDrawer(true); setTab('ledger'); }}>Open the settlement</button>
+                  <button className="btn btn--act" onClick={copyResults}>Copy results</button>
                   <button className="btn btn--quiet" onClick={() => navigate('/')}>New table</button>
                 </div>
               </div>
@@ -426,6 +439,18 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           );
         })}
 
+        {manualCopy && (
+          <div className="sheet-wrap">
+            <section className="sheet" role="dialog" aria-labelledby="copy-results-title">
+              <h2 id="copy-results-title" className="sheet__title">Copy results</h2>
+              <textarea aria-label="Results to copy" readOnly autoFocus rows={9}
+                value={manualCopy} onFocus={(e) => e.currentTarget.select()} />
+              <div className="sheet__actions">
+                <button className="btn btn--quiet" onClick={() => setManualCopy('')}>Done</button>
+              </div>
+            </section>
+          </div>
+        )}
         {sitAt != null && (
           <div className="sheet-wrap" onClick={(e) => { if (e.target === e.currentTarget) setSitAt(null); }}>
             <SitSheet

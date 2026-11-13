@@ -1164,7 +1164,7 @@ export class Table {
     const h = this.hand;
     const me = this.player(forId);
     const players: PublicPlayer[] = this.players
-      .filter((p) => p.status !== 'watching' || p.connections > 0 || p.isHost)
+      .filter((p) => p.status !== 'watching' || p.connections > 0 || p.isHost || (this.status === 'finished' && p.entered))
       .map((p) => {
         const hp = h?.players.find((x) => x.id === p.id);
         return {
