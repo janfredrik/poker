@@ -223,6 +223,7 @@ input, textarea { caret-color: var(--lamp); }
 .topbar__table { font-weight: 600; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topbar__tools { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .topbar__sep { width: 1px; height: 24px; background: var(--line); margin: 0 4px; }
+.topbar__watchers { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; min-height: 32px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; cursor: default; }
 
 .clock { display: flex; align-items: center; gap: 18px; position: relative; }
 .clock__now { display: grid; justify-items: end; line-height: 1.1; }

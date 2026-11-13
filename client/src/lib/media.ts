@@ -12,7 +12,7 @@ type Kind = 'audio' | 'video';
 
 interface Peer {
   socketId: string;
-  playerId: string;
+  playerId: string | null;
   pc: RTCPeerConnection;
   polite: boolean;
   makingOffer: boolean;
@@ -31,6 +31,8 @@ interface Snapshot {
   speaking: Record<string, boolean>;
   error: string | null;
   busy: boolean;
+  /** Other people who have the table open without being a player. */
+  spectators: number;
 }
 
 class MediaMesh {
@@ -42,7 +44,7 @@ class MediaMesh {
   private pending = new Map<string, SignalData[]>();
   private local: MediaStream | null = null;
   private listeners = new Set<() => void>();
-  private snap: Snapshot = { local: null, camOn: false, micOn: false, streams: {}, speaking: {}, error: null, busy: false };
+  private snap: Snapshot = { local: null, camOn: false, micOn: false, streams: {}, speaking: {}, error: null, busy: false, spectators: 0 };
   private audioCtx: AudioContext | null = null;
   private analysers = new Map<string, { node: AnalyserNode; src: MediaStreamAudioSourceNode; trackId: string }>();
   private meterTimer: number | null = null;
@@ -64,7 +66,7 @@ class MediaMesh {
 
   private emit(patch: Partial<Snapshot> = {}) {
     const streams: Record<string, MediaStream> = {};
-    for (const p of this.peers.values()) if (p.remote.getTracks().length) streams[p.playerId] = p.remote;
+    for (const p of this.peers.values()) if (p.playerId && p.remote.getTracks().length) streams[p.playerId] = p.remote;
     this.snap = {
       ...this.snap,
       ...patch,
@@ -91,15 +93,19 @@ class MediaMesh {
   private async setPeers(list: RtcPeer[]) {
     const me = socket.id;
     this.lastPeers = list;
-    const wanted = new Map(list.filter((p) => p.socketId !== me).map((p) => [p.socketId, p]));
+    const self = list.find((p) => p.socketId === me);
+    const spectators = list.filter((p) => p.socketId !== me && !p.playerId).length;
+    // Players connect to everyone; spectators connect to players only (receive-only).
+    const wanted = self
+      ? new Map(list.filter((p) => p.socketId !== me && (self.playerId || p.playerId)).map((p) => [p.socketId, p]))
+      : new Map<string, RtcPeer>();
     for (const id of [...this.peers.keys()]) if (!wanted.has(id)) this.closePeer(id);
     for (const id of [...this.pending.keys()]) if (!wanted.has(id)) this.pending.delete(id);
-    if (!this.myPlayerId) { this.emit(); return; }
     for (const p of wanted.values()) {
       if (!this.peers.has(p.socketId)) await this.openPeer(p);
       else this.peers.get(p.socketId)!.playerId = p.playerId;
     }
-    this.emit();
+    this.emit({ spectators });
   }
 
   private async openPeer(info: RtcPeer) {
@@ -258,11 +264,7 @@ class MediaMesh {
   setIdentity(playerId: string | null) {
     if (this.myPlayerId === playerId) return;
     this.myPlayerId = playerId;
-    if (!playerId) { for (const id of [...this.peers.keys()]) this.closePeer(id); this.pending.clear(); this.emit(); return; }
-    // The server sends the peer list together with the table state, before React has
-    // told us who we are, so setPeers skipped it. Open those connections now.
-    void this.setPeers(this.lastPeers);
-    if (this.snap.camOn || this.snap.micOn) this.report();
+    if (playerId && (this.snap.camOn || this.snap.micOn)) this.report();
   }
 
   /* ---- speaking meters ---- */

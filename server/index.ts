@@ -98,7 +98,7 @@ function rtcPeers(t: Table): RtcPeer[] {
   const peers: RtcPeer[] = [];
   for (const sid of room ?? []) {
     const s = io.sockets.sockets.get(sid) as S | undefined;
-    if (s?.data.playerId) peers.push({ socketId: sid, playerId: s.data.playerId });
+    if (s) peers.push({ socketId: sid, playerId: s.data.playerId ?? null });
   }
   return peers;
 }
@@ -241,7 +241,8 @@ io.on('connection', (raw) => {
   // WebRTC signalling relay (only between sockets in the same table)
   s.on('rtc:signal', (msg: { to: string; data: unknown }) => {
     const target = io.sockets.sockets.get(String(msg?.to)) as S | undefined;
-    if (!target || !s.data.tableId || target.data.tableId !== s.data.tableId || !s.data.playerId) return;
+    // Spectators only receive video, so at least one side must be a player.
+    if (!target || !s.data.tableId || target.data.tableId !== s.data.tableId || (!s.data.playerId && !target.data.playerId)) return;
     target.emit('rtc:signal', { from: s.id, data: msg.data });
   });
 

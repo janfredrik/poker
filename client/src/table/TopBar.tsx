@@ -1,4 +1,4 @@
-import { Camera, CameraOff, Link2, Mic, MicOff, Pause, Play, PanelRight } from 'lucide-react';
+import { Camera, CameraOff, Eye, Link2, Mic, MicOff, Pause, Play, PanelRight } from 'lucide-react';
 import type { TableView } from '../../../shared/types';
 import { formatChips, formatClock } from '../../../shared/presets';
 import { useNow } from '../lib/media';
@@ -18,6 +18,7 @@ interface Props {
   drawerOpen: boolean;
   onDrawer: () => void;
   unread: number;
+  watchers: number;
 }
 
 const blinds = (l: { sb: number; bb: number; ante: number }) => `${formatChips(l.sb)} / ${formatChips(l.bb)}${l.ante ? ` · ante ${formatChips(l.ante)}` : ''}`;
@@ -71,6 +72,11 @@ export function TopBar(p: Props) {
         )}
         {isHost && view.status === 'running' && (
           <button className="btn btn--quiet btn--sm" onClick={p.onPause}><Pause size={15} /> Pause</button>
+        )}
+        {p.watchers > 0 && (
+          <span className="topbar__watchers" title={`${p.watchers} ${p.watchers === 1 ? 'person is' : 'people are'} watching without a seat`}>
+            <Eye size={15} aria-hidden="true" /> {p.watchers}<span className="sr-only"> watching</span>
+          </span>
         )}
         <button className="btn btn--quiet btn--sm" onClick={p.onCopy}>
           <Link2 size={15} /> {p.copied ? 'Link copied' : 'Invite'}

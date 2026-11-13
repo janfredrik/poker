@@ -203,6 +203,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         drawerOpen={drawer}
         onDrawer={() => setDrawer((d) => !d)}
         unread={Math.max(0, unread)}
+        watchers={media.spectators + view.players.filter((x) => x.status === 'watching' && x.connected && x.id !== view.you.playerId).length}
       />
 
       <main className={`room ${acting ? 'has-turn' : ''}`} style={{ ['--lamp-x' as string]: `${lamp.x}%`, ['--lamp-y' as string]: `${lamp.y}%` }}>

@@ -246,7 +246,8 @@ export interface TableView {
 
 export interface RtcPeer {
   socketId: string;
-  playerId: string;
+  /** null for someone who opened the link but has not taken a seat yet. */
+  playerId: string | null;
 }
 
 export type Ack<T = unknown> = (res: { ok: true; data?: T } | { ok: false; error: string }) => void;
