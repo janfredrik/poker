@@ -522,6 +522,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
       <Dock
         view={view}
+        canReact={connected && !handedOff}
         busy={busy}
         onAction={(type, amount) => fire('action', { type, amount })}
         onRebuy={() => { if (view.you.rebuy?.amount) fire('player:rebuy', view.you.rebuy.amount); else setRebuyOpen(true); }}

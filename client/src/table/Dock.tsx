@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
+import { ReactionPicker } from './Reactions';
 
 interface Props {
   view: TableView;
@@ -11,9 +12,10 @@ interface Props {
   onSitOut: (v: boolean) => void;
   onShow: () => void;
   busy: boolean;
+  canReact: boolean;
 }
 
-export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy }: Props) {
+export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy, canReact }: Props) {
   const { you, hand } = view;
   const me = view.players.find((p) => p.id === you.playerId);
   const legal = you.legal;
@@ -101,6 +103,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy 
             <span className="dock__mid">{formatChips(me?.stack ?? 0)}</span>
           </>
         )}
+        {seated && canReact && <ReactionPicker />}
       </div>
 
       <div className="dock__actions">

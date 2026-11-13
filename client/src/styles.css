@@ -442,6 +442,24 @@ input, textarea { caret-color: var(--lamp); }
   font-size: calc(var(--seat-w) * 0.24); font-weight: 800; letter-spacing: -0.03em;
   color: rgba(239, 231, 214, 0.55);
 }
+.seat__reaction {
+  position: absolute; top: 0; left: 0; width: 100%; aspect-ratio: 4 / 3;
+  display: grid; place-items: center; pointer-events: none; z-index: 2;
+}
+.seat__reaction-bubble {
+  display: grid; place-items: center; width: 1.55em; height: 1.55em;
+  background: var(--walnut-950); border: 1px solid var(--line-2); border-radius: 50%;
+  font-size: clamp(22px, calc(var(--seat-w) * 0.22), 38px); line-height: 1;
+  animation: seat-reaction 2400ms var(--ease-out) both;
+}
+@keyframes seat-reaction {
+  from { opacity: 0; transform: translateY(5px) scale(0.9); }
+  10%, 84% { opacity: 1; transform: none; }
+  to { opacity: 0; transform: translateY(-5px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .seat__reaction-bubble { animation: none; }
+}
 .feed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: var(--walnut-900); }
 .feed--mirror { transform: scaleX(-1); }
 .seat__enable-audio {
@@ -530,6 +548,19 @@ input, textarea { caret-color: var(--lamp); }
 .dock.is-turn { border-top-color: var(--lamp); box-shadow: 0 -20px 50px -30px var(--lamp-glow); }
 .dock__hand { display: flex; gap: 8px; }
 .dock__status { display: grid; line-height: 1.1; gap: 4px; }
+.reactions { position: relative; justify-self: start; }
+.reactions__trigger { display: inline-flex; align-items: center; gap: 6px; }
+.reactions__choices {
+  position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 1;
+  display: grid; grid-template-columns: repeat(3, 44px); padding: 4px;
+  background: var(--walnut-850); border: 1px solid var(--line-2); border-radius: 12px;
+  box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.65);
+}
+.reactions__choices button {
+  height: 44px; background: transparent; border: 0; border-radius: 8px;
+  font-size: 23px; line-height: 1; cursor: pointer;
+}
+.reactions__choices button:is(:hover, :focus-visible) { background: var(--line); }
 .dock__label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .dock__big { font-size: clamp(28px, 3vw, 44px); font-weight: 800; letter-spacing: -0.035em; }
 .dock__mid { font-size: 19px; font-weight: 700; letter-spacing: -0.015em; }

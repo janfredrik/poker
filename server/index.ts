@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { Server, type Socket } from 'socket.io';
 import { BUILT_IN_RULESETS, sanitizeRules } from '../shared/presets';
+import { isReaction, type SeatReactionEvent } from '../shared/reactions';
 import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
 import { deleteRuleSet, deleteTableFile, flushAll, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
@@ -168,9 +169,14 @@ io.on('connection', (raw) => {
   };
 
   const allowGamePacket = packetBudget(30);
+  const allowReaction = packetBudget(5);
   // Offers, answers and trickled ICE candidates arrive in bursts for every peer at the table.
   const allowSignal = packetBudget(512);
   s.use(([event], next) => {
+    if (event === 'reaction') {
+      if (allowReaction()) next();
+      return;
+    }
     if (event === 'rtc:signal' ? allowSignal() : allowGamePacket()) next();
   });
 
@@ -261,6 +267,13 @@ io.on('connection', (raw) => {
     if (t.log.length > 200) t.log.splice(0, t.log.length - 200);
     t.onChange();
   }));
+
+  s.on('reaction', (emoji: unknown) => {
+    const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
+    const p = t?.player(s.data.playerId);
+    if (!t || p?.status !== 'seated' || !isReaction(emoji)) return;
+    io.to(t.id).emit('reaction', { playerId: p.id, emoji } satisfies SeatReactionEvent);
+  });
 
   // host controls
   s.on('host:start', (_: unknown, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.start(p.id); }));

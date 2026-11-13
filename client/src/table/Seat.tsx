@@ -3,6 +3,7 @@ import { MicOff, WifiOff, Crown, Volume2 } from 'lucide-react';
 import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
+import { SeatReaction } from './Reactions';
 
 function VideoFeed({ stream, mirror }: { stream: MediaStream; mirror: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -125,6 +126,7 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
           {player.connected && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
         </span>
       </button>
+      {player.status === 'seated' && <SeatReaction playerId={player.id} name={player.name} />}
       {!isYou && stream && stream.getAudioTracks().length > 0 && <RemoteAudio stream={stream} name={player.name} />}
       {isYou && !!holeCards?.length && (
         // covers the picture; the cards straddle its right edge, half on the picture and half beside it
