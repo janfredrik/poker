@@ -167,7 +167,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy 
             <label className="toggle">
               <input type="checkbox" checked={!!me?.sittingOut} onChange={(e) => onSitOut(e.target.checked)} />
               <span className="toggle__track" aria-hidden="true" />
-              Sit out next hand
+              Sit out
             </label>
           </div>
         ) : null}

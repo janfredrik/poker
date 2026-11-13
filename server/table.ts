@@ -443,7 +443,7 @@ export class Table {
   setSittingOut(p: Player, value: boolean) {
     if (p.status !== 'seated') return;
     p.sittingOut = value;
-    this.addLog('system', value ? `${p.name} sits out from the next hand.` : `${p.name} is back.`);
+    this.addLog('system', value ? `${p.name} sits out until they come back.` : `${p.name} is back.`);
     if (!value) this.maybeStartHand();
     this.touch();
   }
