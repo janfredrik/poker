@@ -1,4 +1,8 @@
-import type { BlindLevel, RuleSet } from './types';
+import type { BlindLevel, PayoutRules, RuleSet, TimeBankRules } from './types';
+
+const NO_BANK: TimeBankRules = { enabled: false, startSeconds: 60, addSeconds: 15, everyHands: 10, maxSeconds: 120 };
+const BANK: TimeBankRules = { enabled: true, startSeconds: 60, addSeconds: 15, everyHands: 10, maxSeconds: 120 };
+const NO_PAYOUT: PayoutRules = { enabled: false, currency: 'kr', buyIn: 300, rebuy: 300, addOn: 300, places: 3 };
 
 /** Build a blind ladder from a starting small blind using a familiar progression. */
 export function ladder(startSb: number, count: number, anteFromLevel = 0): BlindLevel[] {
@@ -14,17 +18,36 @@ export function ladder(startSb: number, count: number, anteFromLevel = 0): Blind
 
 export const BUILT_IN_RULESETS: RuleSet[] = [
   {
+    id: 'friday-300',
+    name: 'Friday tournament (300 kr)',
+    builtIn: true,
+    startingStack: 5000,
+    levelMinutes: 15,
+    cashOut: false,
+    levels: ladder(25, 16, 6),
+    breakEveryLevels: 0,
+    breakMinutes: 0,
+    rebuy: { enabled: true, amount: 5000, untilLevel: 0, untilMinutes: 60, maxPerPlayer: 1, maxStackToRebuy: 0 },
+    addOn: { enabled: false, amount: 0, atLevel: 0 },
+    turnSeconds: 30,
+    timeBank: BANK,
+    payout: { enabled: true, currency: 'kr', buyIn: 300, rebuy: 300, addOn: 300, places: 3 },
+  },
+  {
     id: 'cash-10-20',
     name: 'Cash game 10/20',
     builtIn: true,
     startingStack: 2000,
     levelMinutes: 0,
+    cashOut: true,
     levels: [{ sb: 10, bb: 20, ante: 0 }],
     breakEveryLevels: 0,
     breakMinutes: 0,
-    rebuy: { enabled: true, amount: 0, untilLevel: 0, maxPerPlayer: 0, maxStackToRebuy: -1 },
+    rebuy: { enabled: true, amount: 0, untilLevel: 0, untilMinutes: 0, maxPerPlayer: 0, maxStackToRebuy: -1 },
     addOn: { enabled: false, amount: 0, atLevel: 0 },
     turnSeconds: 0,
+    timeBank: NO_BANK,
+    payout: NO_PAYOUT,
   },
   {
     id: 'home-tourney',
@@ -32,12 +55,15 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
     builtIn: true,
     startingStack: 5000,
     levelMinutes: 15,
+    cashOut: false,
     levels: ladder(25, 16, 6),
     breakEveryLevels: 4,
     breakMinutes: 5,
-    rebuy: { enabled: true, amount: 5000, untilLevel: 4, maxPerPlayer: 2, maxStackToRebuy: 0 },
+    rebuy: { enabled: true, amount: 5000, untilLevel: 4, untilMinutes: 0, maxPerPlayer: 2, maxStackToRebuy: 0 },
     addOn: { enabled: true, amount: 5000, atLevel: 4 },
     turnSeconds: 30,
+    timeBank: BANK,
+    payout: NO_PAYOUT,
   },
   {
     id: 'turbo',
@@ -45,12 +71,15 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
     builtIn: true,
     startingStack: 3000,
     levelMinutes: 8,
+    cashOut: false,
     levels: ladder(25, 14, 5),
     breakEveryLevels: 0,
     breakMinutes: 0,
-    rebuy: { enabled: true, amount: 3000, untilLevel: 3, maxPerPlayer: 1, maxStackToRebuy: 0 },
+    rebuy: { enabled: true, amount: 3000, untilLevel: 3, untilMinutes: 0, maxPerPlayer: 1, maxStackToRebuy: 0 },
     addOn: { enabled: false, amount: 0, atLevel: 0 },
     turnSeconds: 20,
+    timeBank: { ...BANK, startSeconds: 30, addSeconds: 10, maxSeconds: 60 },
+    payout: NO_PAYOUT,
   },
   {
     id: 'freezeout',
@@ -58,12 +87,15 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
     builtIn: true,
     startingStack: 10000,
     levelMinutes: 20,
+    cashOut: false,
     levels: ladder(25, 18, 5),
     breakEveryLevels: 0,
     breakMinutes: 0,
-    rebuy: { enabled: false, amount: 0, untilLevel: 0, maxPerPlayer: 0, maxStackToRebuy: 0 },
+    rebuy: { enabled: false, amount: 0, untilLevel: 0, untilMinutes: 0, maxPerPlayer: 0, maxStackToRebuy: 0 },
     addOn: { enabled: false, amount: 0, atLevel: 0 },
     turnSeconds: 30,
+    timeBank: BANK,
+    payout: NO_PAYOUT,
   },
 ];
 
@@ -87,6 +119,7 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
     builtIn: false,
     startingStack: int(r.startingStack, 1, 1e9, 2000),
     levelMinutes: int(r.levelMinutes, 0, 240, 0),
+    cashOut: typeof r.cashOut === 'boolean' ? r.cashOut : int(r.levelMinutes, 0, 240, 0) === 0,
     levels: levels.length ? levels : [{ sb: 10, bb: 20, ante: 0 }],
     breakEveryLevels: int(r.breakEveryLevels, 0, 60, 0),
     breakMinutes: int(r.breakMinutes, 0, 60, 0),
@@ -96,6 +129,7 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
       untilLevel: int(r.rebuy?.untilLevel, 0, 60, 0),
       maxPerPlayer: int(r.rebuy?.maxPerPlayer, 0, 100, 0),
       maxStackToRebuy: int(r.rebuy?.maxStackToRebuy, -1, 1e9, 0),
+      untilMinutes: int(r.rebuy?.untilMinutes, 0, 1440, 0),
     },
     addOn: {
       enabled: !!r.addOn?.enabled,
@@ -103,6 +137,21 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
       atLevel: int(r.addOn?.atLevel, 0, 60, 0),
     },
     turnSeconds: int(r.turnSeconds, 0, 600, 0),
+    timeBank: {
+      enabled: !!r.timeBank?.enabled,
+      startSeconds: int(r.timeBank?.startSeconds, 0, 3600, 60),
+      addSeconds: int(r.timeBank?.addSeconds, 0, 3600, 15),
+      everyHands: int(r.timeBank?.everyHands, 0, 1000, 10),
+      maxSeconds: int(r.timeBank?.maxSeconds, 0, 3600, 120),
+    },
+    payout: {
+      enabled: !!r.payout?.enabled,
+      currency: String(r.payout?.currency ?? 'kr').slice(0, 6),
+      buyIn: int(r.payout?.buyIn, 0, 1e7, 300),
+      rebuy: int(r.payout?.rebuy, 0, 1e7, 300),
+      addOn: int(r.payout?.addOn, 0, 1e7, 300),
+      places: int(r.payout?.places, 1, 9, 3),
+    },
   };
 }
 
@@ -116,4 +165,17 @@ export function formatClock(ms: number): string {
   const m = Math.floor((s % 3600) / 60);
   const ss = String(s % 60).padStart(2, '0');
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
+}
+
+/**
+ * Prize per place: all buy-ins to 1st; rebuys and add-ons rotate over the paid places
+ * in the order they were made (1st to 1st place, 2nd to 2nd, … then round again).
+ * `events` lists each rebuy ('rebuy') or add-on ('addon') in order.
+ */
+export function payoutAmounts(entries: number, events: ('rebuy' | 'addon')[], p: PayoutRules, players = entries): number[] {
+  const places = Math.max(1, Math.min(p.places, Math.max(1, players)));
+  const out = Array.from({ length: places }, () => 0);
+  out[0] = entries * p.buyIn;
+  events.forEach((e, i) => { out[i % places] += e === 'addon' ? p.addOn : p.rebuy; });
+  return out;
 }

@@ -1,0 +1,42 @@
+# Home Game: poker server + TURN relay for video.
+# Copy .env.example to .env and fill it in before `docker compose up -d`.
+services:
+  poker:
+    image: ${POKER_IMAGE:-ghcr.io/janfredrik/poker:latest}   # built by GitHub Actions
+    container_name: homegame-poker
+    restart: unless-stopped
+    user: "${PUID:-1000}:${PGID:-1000}"   # Unraid: 99:100
+    ports:
+      - "${POKER_PORT:-3000}:3000"          # nginx proxies to this
+    environment:
+      - TZ=${TZ:-Europe/Oslo}
+      - STUN_URLS=stun:${PUBLIC_HOST}:3478
+      - TURN_URLS=turn:${PUBLIC_HOST}:3478?transport=udp,turn:${PUBLIC_HOST}:3478?transport=tcp
+      - TURN_SECRET=${TURN_SECRET}
+      - TABLE_TTL_DAYS=14
+    volumes:
+      - ${DATA_PATH:-./data}:/data
+
+  coturn:
+    image: coturn/coturn:4.6
+    container_name: homegame-coturn
+    restart: unless-stopped
+    network_mode: host                      # TURN needs a wide UDP range; host networking is simplest on Unraid
+    command:
+      - -n
+      - --log-file=stdout
+      - --listening-port=3478
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET}
+      - --realm=${PUBLIC_HOST}
+      - --external-ip=${PUBLIC_IP}
+      - --min-port=49160
+      - --max-port=49200
+      - --no-cli
+      - --no-tls
+      - --no-dtls
+      - --no-multicast-peers
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255

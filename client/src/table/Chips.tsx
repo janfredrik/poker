@@ -1,16 +1,12 @@
 import { formatChips } from '../../../shared/presets';
 
-/* Clay chip denominations from the home-game tin. */
-const DENOMS: { v: number; c: string }[] = [
-  { v: 25000, c: 'chip--blue' },
-  { v: 5000, c: 'chip--black' },
-  { v: 1000, c: 'chip--bone' },
-  { v: 500, c: 'chip--green' },
-  { v: 100, c: 'chip--black' },
-  { v: 25, c: 'chip--green' },
-  { v: 5, c: 'chip--red' },
-  { v: 1, c: 'chip--bone' },
-];
+/* Clay chip denominations from the home-game tin: one colour per value.
+   Small games use the low set; tables whose small blind is a multiple of 25 use the high set. */
+const LOW = [{ v: 500, c: 'chip--blue' }, { v: 100, c: 'chip--black' }, { v: 25, c: 'chip--green' }, { v: 5, c: 'chip--red' }, { v: 1, c: 'chip--bone' }];
+const HIGH = [{ v: 5000, c: 'chip--blue' }, { v: 1000, c: 'chip--black' }, { v: 500, c: 'chip--green' }, { v: 100, c: 'chip--red' }, { v: 25, c: 'chip--bone' }];
+let DENOMS = HIGH;
+/** Pick the chip set from the table's starting small blind. */
+export function setChipScale(smallBlind: number) { DENOMS = smallBlind % 25 === 0 ? HIGH : LOW; }
 
 /** Break an amount into up to 4 short columns of chips. */
 function columns(amount: number, maxCols = 4, maxPerCol = 7) {
@@ -23,6 +19,7 @@ function columns(amount: number, maxCols = 4, maxPerCol = 7) {
     cols.push({ c: d.c, n: Math.min(n, maxPerCol) });
     if (cols.length >= maxCols) break;
   }
+  if (rest > 0 && cols.length < maxCols) cols.push({ c: 'chip--bone', n: 1 });
   return cols;
 }
 

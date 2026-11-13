@@ -4,6 +4,7 @@ process.env.DATA_DIR = process.env.DATA_DIR ?? '/tmp/poker-selftest';
 const { Table } = await import('./table');
 const { bestHand } = await import('./cards');
 const { BUILT_IN_RULESETS } = await import('../shared/presets');
+const rs = (id: string) => BUILT_IN_RULESETS.find((r) => r.id === id)!;
 
 let failures = 0;
 const assert = (c: unknown, msg: string) => { if (!c) { failures++; console.error('FAIL:', msg); } };
@@ -32,7 +33,7 @@ async function run(seed: number, nPlayers: number, rulesIdx: number) {
   for (let guard = 0; guard < 20000 && hands < 300; guard++) {
     await sleep(0);
     const h = t.hand;
-    if (!h) { await sleep(2); if (!t.hand) break; continue; }
+    if (!h) { for (let w = 0; w < 50 && !t.hand; w++) await sleep(2); if (!t.hand) break; continue; }
     if (h.finished) { await sleep(3); if (t.hand === h) { hands++; break; } hands++; continue; }
     if (h.toAct == null) { await sleep(2); continue; }
     const id = h.players[h.toAct].id;
@@ -53,6 +54,75 @@ async function run(seed: number, nPlayers: number, rulesIdx: number) {
   }
   t.dispose();
   return { hands, actions, alive: t.players.filter((p) => p.stack > 0).length };
+}
+
+// clock: levels advance, the last level never ends; tournaments forfeit chips on leave
+{
+  const rules = { ...rs('home-tourney'), levels: rs('home-tourney').levels.slice(0, 3), breakEveryLevels: 0, levelMinutes: 1, turnSeconds: 0 };
+  const t = new Table({ name: 'clock', maxSeats: 9, requireApproval: false, rules });
+  const a = t.createPlayer('A', true), b = t.createPlayer('B');
+  a.connections = b.connections = 1;
+  t.requestSeat(a, 1, 'A', 0); t.requestSeat(b, 2, 'B', 0);
+  t.start(a.id);
+  const t0 = Date.now();
+  t.tick(t0 + 61_000); assert(t.clock.levelIndex === 1, 'level 2 after 1 min');
+  t.tick(t0 + 125_000); assert(t.clock.levelIndex === 2, 'level 3 after 2 min');
+  t.tick(t0 + 10 * 3600_000); assert(t.clock.levelIndex === 2, 'final level never ends');
+  assert(t.view(a.id).clock.final === true && t.view(a.id).clock.next === null, 'final level flagged');
+  t.dispose();
+  const t2 = new Table({ name: 'leave', maxSeats: 9, requireApproval: false, rules: { ...rules, levelMinutes: 15 } });
+  const c = t2.createPlayer('C', true), d = t2.createPlayer('D'), e = t2.createPlayer('E');
+  for (const [i, p] of [c, d, e].entries()) { p.connections = 1; t2.requestSeat(p, i + 1, p.name, 0); }
+  t2.start(c.id);
+  t2.pause(c.id);
+  await sleep(5);
+  const stack = d.stack;
+  t2.leaveSeat(d);
+  assert(d.cashOut === 0 && d.forfeited === stack, 'tournament leave forfeits stack');
+  assert(t2.view(c.id).ledger.find((r) => r.playerId === d.id)!.net === -d.buyIn, 'ledger shows full loss');
+  t2.dispose();
+  const t3 = new Table({ name: 'cash', maxSeats: 9, requireApproval: false, rules: { ...rs('cash-10-20'), turnSeconds: 0 } });
+  const f = t3.createPlayer('F', true), g = t3.createPlayer('G');
+  f.connections = g.connections = 1;
+  t3.requestSeat(f, 1, 'F', 2000); t3.requestSeat(g, 2, 'G', 2000);
+  t3.start(f.id); t3.pause(f.id); await sleep(5);
+  const gs = g.stack; t3.leaveSeat(g);
+  assert(g.cashOut === gs && g.forfeited === 0, 'cash game leave cashes out');
+  t3.dispose();
+}
+
+// payouts: buy-ins to 1st, rebuys rotate over 3 places
+{
+  const { payoutAmounts } = await import('../shared/presets');
+  const pr = { enabled: true, currency: 'kr', buyIn: 300, rebuy: 300, addOn: 300, places: 3 };
+  const a0 = payoutAmounts(5, [], pr);
+  assert(a0[0] === 1500 && a0[1] === 0 && a0[2] === 0, 'no rebuys: winner takes all');
+  const a4 = payoutAmounts(5, ['rebuy', 'rebuy', 'rebuy', 'rebuy'], pr);
+  assert(a4[0] === 2100 && a4[1] === 300 && a4[2] === 300, `4 rebuys rotate: ${a4}`);
+  const a6 = payoutAmounts(6, Array(6).fill('rebuy'), pr);
+  assert(a6[0] === 2400 && a6[1] === 600 && a6[2] === 600, `6 rebuys rotate: ${a6}`);
+}
+
+// a full tournament ends with places 1..n and a winner
+{
+  const rules = { ...rs('friday-300'), turnSeconds: 0, rebuy: { ...rs('friday-300').rebuy, enabled: false } };
+  const t = new Table({ name: 'tour', maxSeats: 9, requireApproval: false, rules });
+  const ps = [0, 1, 2, 3].map((i) => t.createPlayer(`T${i}`, i === 0));
+  ps.forEach((p, i) => { p.connections = 1; t.requestSeat(p, i + 1, p.name, 0); });
+  t.start(ps[0].id);
+  for (let g = 0; g < 20000 && t.status !== 'finished'; g++) {
+    await sleep(0);
+    const h = t.hand;
+    if (!h || h.finished || h.toAct == null) { await sleep(1); continue; }
+    const id = h.players[h.toAct].id;
+    t.act(id, 'allin');
+  }
+  assert(t.status === 'finished', 'tournament finishes');
+  const places = ps.map((p) => p.place).sort();
+  assert(JSON.stringify(places) === '[1,2,3,4]', `places assigned: ${places}`);
+  const res = t.view(ps[0].id).results!;
+  assert(res.pool === 1200 && res.places[0].prize === 1200 && res.places[0].playerId === ps.find((p) => p.place === 1)!.id, 'winner gets the pool');
+  t.dispose();
 }
 
 let totalHands = 0;

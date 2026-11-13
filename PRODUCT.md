@@ -26,6 +26,9 @@ A self-hosted, private alternative to PokerNow for home games with friends. The 
 - Full NLH engine: dealer button, blinds, preflop/flop/turn/river, check/call/bet/raise/fold/all-in, side pots, showdown with hand evaluation, split pots.
 - Blind clock that raises blinds on schedule; host can pause.
 - Ledger: buy-ins, rebuys, and net results per player.
+- Rule sets (saved on the server): blind structure and level length (last level never ends), rebuy period in minutes of play and/or by level, max rebuys, add-on, shot clock with a refilling time bank, whether leaving cashes out.
+- House settlement rule (the owner's group): agreed buy-in (e.g. 300 kr), one rebuy within the first hour; all buy-ins go to 1st place, rebuys rotate over the top 3 in the order made (1st rebuy to 1st, 2nd to 2nd, 3rd to 3rd, 4th to 1st…). Without rebuys the winner takes all.
+- Tournament flow: seats are shuffled three times on start; knock-out order sets finishing places; one player left wins.
 - Per-player camera and microphone over WebRTC (mesh), with mute/camera toggles.
 - Table state persisted to disk so a container restart does not end the night.
 
@@ -33,7 +36,7 @@ A self-hosted, private alternative to PokerNow for home games with friends. The 
 
 - No accounts or passwords; identity is a per-browser token tied to a seat.
 - Must work behind nginx (WebSocket upgrade) on a subpath-free hostname.
-- Play money only. No real-money handling, payments, or gambling integration.
+- Play money only. No payments or gambling integration. The app may calculate the friends' agreed settlement (buy-in, rebuys, who gets what) but never moves or holds money.
 - UI language: English, using standard poker terminology.
 - Up to 9 seats per table.
 - Players are mostly on laptops/desktops; phones must work but are secondary.

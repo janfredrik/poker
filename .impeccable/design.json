@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-13T19:55:39.823063+00:00",
+  "title": "Design System: Home Game",
+  "extensions": {
+    "colorMeta": {
+      "lamp": {
+        "role": "primary",
+        "displayName": "Lamp Amber",
+        "canonical": "#f2b350",
+        "tonalRamp": [
+          "#3a2508",
+          "#5c3c0e",
+          "#8a5c16",
+          "#b98020",
+          "#e0a03c",
+          "#f2b350",
+          "#ffc76a",
+          "#ffe7b8"
+        ]
+      },
+      "lamp-hi": {
+        "role": "primary",
+        "displayName": "Lamp Bright",
+        "canonical": "#ffc76a"
+      },
+      "lamp-ink": {
+        "role": "primary",
+        "displayName": "Lamp Ink",
+        "canonical": "#2a1a05"
+      },
+      "lamp-glow": {
+        "role": "primary",
+        "displayName": "Lamp Glow",
+        "canonical": "rgba(255, 190, 100, 0.34)"
+      },
+      "felt-600": {
+        "role": "secondary",
+        "displayName": "Teal Felt",
+        "canonical": "#20505a",
+        "tonalRamp": [
+          "#0c2226",
+          "#133238",
+          "#1a424a",
+          "#20505a",
+          "#2a6370",
+          "#4b8592",
+          "#86b4bd",
+          "#cfe0dc"
+        ]
+      },
+      "felt-700": {
+        "role": "secondary",
+        "displayName": "Live Felt",
+        "canonical": "#1a424a"
+      },
+      "felt-800": {
+        "role": "secondary",
+        "displayName": "Deep Felt",
+        "canonical": "#133238"
+      },
+      "felt-500": {
+        "role": "secondary",
+        "displayName": "Lit Felt",
+        "canonical": "#2a6370"
+      },
+      "felt-line": {
+        "role": "secondary",
+        "displayName": "Felt Thread",
+        "canonical": "rgba(220, 240, 236, 0.16)"
+      },
+      "felt-text": {
+        "role": "secondary",
+        "displayName": "Felt Text",
+        "canonical": "#cfe0dc"
+      },
+      "felt-hint": {
+        "role": "secondary",
+        "displayName": "Felt Hint",
+        "canonical": "#a9c4bf"
+      },
+      "chip-bone": {
+        "role": "tertiary",
+        "displayName": "Bone Clay",
+        "canonical": "#e9e0cc"
+      },
+      "chip-red": {
+        "role": "tertiary",
+        "displayName": "Red Clay",
+        "canonical": "#c8372d",
+        "tonalRamp": [
+          "#2e0c09",
+          "#521510",
+          "#7a2019",
+          "#a32b22",
+          "#c8372d",
+          "#d9665d",
+          "#e89a93",
+          "#f6d3cf"
+        ]
+      },
+      "chip-blue": {
+        "role": "tertiary",
+        "displayName": "Blue Clay",
+        "canonical": "#2f5fa8",
+        "tonalRamp": [
+          "#0b1628",
+          "#132848",
+          "#1c3b6a",
+          "#264d8b",
+          "#2f5fa8",
+          "#5b82c0",
+          "#93aed8",
+          "#d0dcef"
+        ]
+      },
+      "chip-green": {
+        "role": "tertiary",
+        "displayName": "Green Clay",
+        "canonical": "#2f7d4a",
+        "tonalRamp": [
+          "#0b1e11",
+          "#13341f",
+          "#1c4c2d",
+          "#25653b",
+          "#2f7d4a",
+          "#58a070",
+          "#92c4a2",
+          "#d0e7d7"
+        ]
+      },
+      "chip-black": {
+        "role": "tertiary",
+        "displayName": "Black Clay",
+        "canonical": "#1b1715"
+      },
+      "card-red": {
+        "role": "tertiary",
+        "displayName": "Card Red",
+        "canonical": "#b8322a"
+      },
+      "walnut-800": {
+        "role": "neutral",
+        "displayName": "Walnut",
+        "canonical": "#3b2a20",
+        "tonalRamp": [
+          "#160f0b",
+          "#1d1510",
+          "#24160e",
+          "#31231a",
+          "#3b2a20",
+          "#4d3829",
+          "#6a4f3b",
+          "#8e7a65"
+        ]
+      },
+      "walnut-950": {
+        "role": "neutral",
+        "displayName": "Night Walnut",
+        "canonical": "#160f0b"
+      },
+      "walnut-900": {
+        "role": "neutral",
+        "displayName": "Dark Walnut",
+        "canonical": "#1d1510"
+      },
+      "walnut-850": {
+        "role": "neutral",
+        "displayName": "Floor Walnut",
+        "canonical": "#31231a"
+      },
+      "walnut-600": {
+        "role": "neutral",
+        "displayName": "Lit Walnut",
+        "canonical": "#4d3829"
+      },
+      "walnut-500": {
+        "role": "neutral",
+        "displayName": "Pale Walnut",
+        "canonical": "#6a4f3b"
+      },
+      "rail": {
+        "role": "neutral",
+        "displayName": "Table Rail",
+        "canonical": "#24160e"
+      },
+      "bone": {
+        "role": "neutral",
+        "displayName": "Bone Paper",
+        "canonical": "#efe7d6",
+        "tonalRamp": [
+          "#3a342b",
+          "#5e564a",
+          "#8e7a65",
+          "#b9a78f",
+          "#d9ceb8",
+          "#efe7d6",
+          "#f8f2e6",
+          "#fdfaf4"
+        ]
+      },
+      "bone-2": {
+        "role": "neutral",
+        "displayName": "Worn Bone",
+        "canonical": "#d9ceb8"
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Oak",
+        "canonical": "#b9a78f"
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Faint Oak",
+        "canonical": "#8e7a65"
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Card Ink",
+        "canonical": "#1d1a17"
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "rgba(239, 231, 214, 0.1)"
+      },
+      "line-2": {
+        "role": "neutral",
+        "displayName": "Firm Hairline",
+        "canonical": "rgba(239, 231, 214, 0.18)"
+      },
+      "good": {
+        "role": "neutral",
+        "displayName": "Up",
+        "canonical": "#8fd1a2"
+      },
+      "bad": {
+        "role": "neutral",
+        "displayName": "Down",
+        "canonical": "#f0958a"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Pot amount (and the lobby title, larger)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Amount to call / your status in the dock."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Current blinds, sheet titles, felt waiting title."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Default text, names, stacks, buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Small sentence-case muted labels: Pot, Level, field labels, ledger headers."
+      }
+    },
+    "shadows": [
+      {
+        "name": "felt-on-rail",
+        "value": "0 0 0 clamp(10px,1.5vmin,18px) #24160e, 0 0 0 calc(clamp(10px,1.5vmin,18px) + 1px) rgba(239,231,214,0.08), inset 0 2px 30px rgba(0,0,0,0.45), 0 40px 80px -20px rgba(0,0,0,0.7)",
+        "purpose": "Every felt surface: rail ring, inner shading, deep drop."
+      },
+      {
+        "name": "card",
+        "value": "0 2px 0 rgba(0,0,0,0.18), 0 6px 14px -4px rgba(0,0,0,0.55)",
+        "purpose": "Card edge and lift."
+      },
+      {
+        "name": "chip",
+        "value": "0 2px 0 rgba(0,0,0,0.35), 0 3px 6px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(0,0,0,0.25)",
+        "purpose": "Clay disc thickness."
+      },
+      {
+        "name": "lamp-seat",
+        "value": "0 18px 40px -12px rgba(255,190,100,0.34)",
+        "purpose": "Glow under the acting seat."
+      },
+      {
+        "name": "lamp-button",
+        "value": "0 6px 18px -8px rgba(255,190,100,0.34)",
+        "purpose": "Under enabled amber buttons."
+      },
+      {
+        "name": "lamp-dock",
+        "value": "0 -20px 50px -30px rgba(255,190,100,0.34)",
+        "purpose": "Above the dock when it is your turn."
+      },
+      {
+        "name": "sheet",
+        "value": "0 30px 70px -20px rgba(0,0,0,0.8)",
+        "purpose": "Floating sheets."
+      },
+      {
+        "name": "toast",
+        "value": "0 16px 40px -12px rgba(0,0,0,0.7)",
+        "purpose": "Toasts."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "House easing for every move and reveal."
+      },
+      {
+        "name": "lamp-slide",
+        "value": "left/top 900ms ease-out; opacity 600ms",
+        "purpose": "Lamp pool travelling to the acting seat."
+      },
+      {
+        "name": "control",
+        "value": "160ms",
+        "purpose": "Button and field colour transitions; 1px press on active."
+      },
+      {
+        "name": "deal",
+        "value": "420ms ease-out, from translateY(-10px) rotate(-3deg)",
+        "purpose": "Cards arriving."
+      },
+      {
+        "name": "rise",
+        "value": "260-500ms ease-out, from translateY(6px)",
+        "purpose": "Tags, bets, sheets, toasts appearing."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "1ms",
+        "purpose": "All animation and transition durations collapse under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "drawer-overlay",
+        "value": "1280px"
+      },
+      {
+        "name": "compact",
+        "value": "900px"
+      },
+      {
+        "name": "phone",
+        "value": "560px"
+      },
+      {
+        "name": "portrait",
+        "value": "max-aspect-ratio: 4/5"
+      }
+    ],
+    "form": {
+      "name": "Kitchen Table Home Game",
+      "seedKey": "a13589ed"
+    }
+  },
+  "components": [
+    {
+      "name": "Act Button",
+      "kind": "button",
+      "refersTo": "button-act",
+      "description": "The only amber control: something you can do now (Call, Raise, Sit down, Start).",
+      "html": "<button class=\"ds-btn ds-btn-act\">Call 50 <kbd class=\"ds-kbd\">C</kbd></button> <button class=\"ds-btn ds-btn-act\" disabled>Raise to 150</button>",
+      "css": ".ds-btn{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid transparent;font-weight:650;font-size:15px;letter-spacing:-0.005em;cursor:pointer;transition:background-color 160ms cubic-bezier(0.16,1,0.3,1),transform 120ms cubic-bezier(0.16,1,0.3,1);} .ds-btn-act{background:#f2b350;color:#2a1a05;box-shadow:0 6px 18px -8px rgba(255,190,100,0.34);} .ds-btn-act:hover:not(:disabled){background:#ffc76a;} .ds-btn:active:not(:disabled){transform:translateY(1px);} .ds-btn:focus-visible{outline:2px solid #f2b350;outline-offset:2px;} .ds-btn-act:disabled{background:rgba(239,231,214,0.08);color:#8e7a65;box-shadow:none;cursor:not-allowed;} .ds-kbd{font:600 11px/1 inherit;padding:3px 5px;border-radius:4px;border:1px solid currentColor;opacity:0.55;}"
+    },
+    {
+      "name": "Quiet and Fold Buttons",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Secondary actions on walnut; Fold is outlined and never amber.",
+      "html": "<div style=\"background:#1d1510;padding:16px;display:flex;gap:10px\"><button class=\"ds-btn2 ds-btn-quiet\">Invite</button><button class=\"ds-btn2 ds-btn-fold\">Fold</button><button class=\"ds-btn2 ds-btn-danger\">Remove</button></div>",
+      "css": ".ds-btn2{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:44px;padding:0 18px;border-radius:10px;border:1px solid transparent;font-weight:650;font-size:15px;cursor:pointer;transition:background-color 160ms;} .ds-btn-quiet{background:rgba(239,231,214,0.07);color:#efe7d6;border-color:rgba(239,231,214,0.1);} .ds-btn-quiet:hover{background:rgba(239,231,214,0.13);} .ds-btn-fold{background:transparent;color:#efe7d6;border-color:rgba(239,231,214,0.18);} .ds-btn-fold:hover{background:rgba(239,231,214,0.08);} .ds-btn-danger{background:transparent;color:#f0958a;border-color:rgba(240,149,138,0.35);} .ds-btn-danger:hover{background:rgba(240,149,138,0.1);} .ds-btn2:focus-visible{outline:2px solid #f2b350;outline-offset:2px;}"
+    },
+    {
+      "name": "Pot Presets",
+      "kind": "chip",
+      "refersTo": "chip-button",
+      "description": "Pill presets that set the raise amount.",
+      "html": "<div style=\"background:#160f0b;padding:16px;display:flex;gap:6px\"><button class=\"ds-chipbtn\">½ pot</button><button class=\"ds-chipbtn\">¾ pot</button><button class=\"ds-chipbtn\">Pot</button></div>",
+      "css": ".ds-chipbtn{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;min-height:30px;padding:0 11px;border-radius:999px;background:rgba(239,231,214,0.07);border:1px solid rgba(239,231,214,0.1);font-size:13px;font-weight:600;color:#d9ceb8;cursor:pointer;} .ds-chipbtn:hover{background:rgba(239,231,214,0.14);color:#efe7d6;} .ds-chipbtn:focus-visible{outline:2px solid #f2b350;outline-offset:2px;}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled text field; focus turns the border lamp amber.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Your name</span><input class=\"ds-input\" placeholder=\"Stian\"><span class=\"ds-field-hint\">Shown on your seat.</span></label>",
+      "css": ".ds-field{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;display:grid;gap:6px;background:#1d1510;padding:16px;color:#efe7d6;} .ds-field-label{font-size:13px;font-weight:600;color:#d9ceb8;} .ds-field-hint{font-size:12.5px;color:#b9a78f;} .ds-input{font:inherit;height:40px;padding:0 12px;border-radius:8px;border:1px solid rgba(239,231,214,0.18);background:rgba(10,6,4,0.35);color:#efe7d6;caret-color:#f2b350;transition:border-color 160ms;} .ds-input:hover{border-color:rgba(239,231,214,0.28);} .ds-input:focus{outline:none;border-color:#f2b350;background:rgba(10,6,4,0.5);}"
+    },
+    {
+      "name": "Top Bar with Blind Clock",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Wordmark, centred blind clock with exact-length bar, quiet tools.",
+      "html": "<div class=\"ds-top\"><span class=\"ds-wm\">Home Game</span><div class=\"ds-clock\"><div class=\"ds-now\"><span class=\"ds-lvl\">Level 1</span><span class=\"ds-blinds\">25 / 50</span></div><div class=\"ds-time\"><span class=\"ds-bar\"><span style=\"width:22%\"></span></span><span class=\"ds-meta\"><b>1:58</b><span>next 50 / 100</span></span></div></div><button class=\"ds-tool\">Invite</button></div>",
+      "css": ".ds-top{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding:10px 16px;background:#160f0b;border-bottom:1px solid rgba(239,231,214,0.1);color:#efe7d6;} .ds-wm{display:inline-flex;align-items:center;gap:8px;font-weight:800;letter-spacing:-0.02em;font-size:15px;} .ds-wm::before{content:'';width:16px;height:16px;border-radius:50%;background:repeating-conic-gradient(#c8372d 0 30deg,#e9e0cc 30deg 45deg);box-shadow:inset 0 0 0 4px #c8372d,inset 0 0 0 5px #e9e0cc;} .ds-clock{display:flex;align-items:center;gap:18px;} .ds-now{display:grid;justify-items:end;line-height:1.1;} .ds-lvl{font-size:12.5px;font-weight:600;color:#b9a78f;} .ds-blinds{font-size:22px;font-weight:800;letter-spacing:-0.02em;} .ds-time{display:grid;gap:5px;width:200px;} .ds-bar{display:block;height:5px;border-radius:4px;background:rgba(239,231,214,0.1);overflow:hidden;} .ds-bar span{display:block;height:100%;background:#d9ceb8;} .ds-meta{display:flex;justify-content:space-between;font-size:12.5px;} .ds-meta span{color:#b9a78f;} .ds-tool{justify-self:end;font:inherit;font-weight:650;font-size:14px;min-height:34px;padding:0 12px;border-radius:8px;background:rgba(239,231,214,0.07);color:#efe7d6;border:1px solid rgba(239,231,214,0.1);cursor:pointer;} .ds-tool:hover{background:rgba(239,231,214,0.13);} .ds-tool:focus-visible{outline:2px solid #f2b350;outline-offset:2px;}"
+    },
+    {
+      "name": "Seat",
+      "kind": "custom",
+      "refersTo": "seat-plate",
+      "description": "Face frame over nameplate; the acting seat takes the lamp border, glow and timer.",
+      "html": "<div class=\"ds-room\"><div class=\"ds-seat\"><div class=\"ds-frame\"><span class=\"ds-av\">MA</span><span class=\"ds-tag\">Check</span></div><div class=\"ds-plate\"><span>Mari</span><b>4,275</b></div></div><div class=\"ds-seat is-acting\"><div class=\"ds-frame\"><span class=\"ds-av\">ST</span></div><div class=\"ds-plate\"><span>Stian</span><b>4,425</b><span class=\"ds-timer\"><span style=\"width:70%\"></span></span></div></div></div>",
+      "css": ".ds-room{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;display:flex;gap:24px;padding:24px;background:linear-gradient(180deg,#3b2a20,#31231a);color:#efe7d6;} .ds-seat{position:relative;width:180px;} .ds-seat:not(.is-acting){filter:brightness(0.7) saturate(0.85);} .ds-frame{position:relative;aspect-ratio:4/3;border-radius:14px 14px 4px 4px;overflow:hidden;background:radial-gradient(90% 90% at 50% 30%,#4d3829,#3b2a20);border:2px solid rgba(239,231,214,0.1);transition:border-color 300ms,box-shadow 400ms;} .ds-av{position:absolute;inset:0;display:grid;place-items:center;font-size:43px;font-weight:800;letter-spacing:-0.03em;color:rgba(239,231,214,0.55);} .ds-tag{position:absolute;top:6px;right:6px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;background:rgba(14,9,6,0.82);color:#d9ceb8;} .ds-plate{position:relative;display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:6px 10px 7px;background:rgba(14,9,6,0.86);border-radius:4px 4px 12px 12px;border:2px solid rgba(239,231,214,0.1);border-top:0;font-size:14px;font-weight:650;} .ds-plate b{font-weight:800;font-size:15px;} .is-acting .ds-frame,.is-acting .ds-plate{border-color:#f2b350;} .is-acting .ds-frame{box-shadow:0 18px 40px -12px rgba(255,190,100,0.34);} .ds-timer{position:absolute;left:10px;right:10px;bottom:-4px;height:4px;border-radius:4px;background:rgba(0,0,0,0.5);overflow:hidden;} .ds-timer span{display:block;height:100%;background:#f2b350;}"
+    },
+    {
+      "name": "Felt with Pot",
+      "kind": "card",
+      "refersTo": "",
+      "description": "Rounded-square teal topper on a rail ring, nap noise and dashed stitch, pot at display scale.",
+      "html": "<div class=\"ds-bg\"><div class=\"ds-felt\"><div class=\"ds-pot\"><span class=\"ds-pot-l\">Pot</span><span class=\"ds-pot-a\">550</span></div></div></div>",
+      "css": ".ds-bg{padding:40px;background:linear-gradient(180deg,#3b2a20,#31231a);} .ds-felt{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;position:relative;height:220px;border-radius:72px;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0.05 0 0 0 0 0.06 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\");background-color:#20505a;box-shadow:0 0 0 14px #24160e,0 0 0 15px rgba(239,231,214,0.08),inset 0 2px 30px rgba(0,0,0,0.45),0 40px 80px -20px rgba(0,0,0,0.7);display:grid;place-items:center;color:#efe7d6;} .ds-felt::after{content:'';position:absolute;inset:16px;border-radius:inherit;border:1.5px dashed rgba(220,240,236,0.16);pointer-events:none;} .ds-pot{display:grid;justify-items:center;gap:4px;} .ds-pot-l{font-size:13px;font-weight:600;color:#cfe0dc;} .ds-pot-a{font-size:56px;font-weight:800;letter-spacing:-0.035em;line-height:0.95;}"
+    },
+    {
+      "name": "Clay Chip Stack",
+      "kind": "custom",
+      "refersTo": "",
+      "description": "Top-down clay discs, one colour per denomination, amount tag beside.",
+      "html": "<div class=\"ds-felt2\"><span class=\"ds-chips\"><span class=\"ds-col\"><i class=\"ds-chip g\"></i><i class=\"ds-chip g\"></i></span><span class=\"ds-col\"><i class=\"ds-chip r\"></i><i class=\"ds-chip r\"></i><i class=\"ds-chip r\"></i></span><span class=\"ds-col\"><i class=\"ds-chip w\"></i></span><span class=\"ds-amt\">550</span></span></div>",
+      "css": ".ds-felt2{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;padding:24px;background:#20505a;} .ds-chips{display:inline-flex;align-items:center;gap:7px;} .ds-col{display:inline-flex;flex-direction:column-reverse;margin-right:3px;} .ds-chip{--cw:28px;--base:#e9e0cc;--spot:#2f5fa8;display:block;width:var(--cw);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,var(--base) 0 47%,rgba(255,255,255,0.55) 47% 51%,transparent 51%),repeating-conic-gradient(from 15deg,var(--base) 0 42deg,var(--spot) 42deg 60deg);box-shadow:0 2px 0 rgba(0,0,0,0.35),0 3px 6px rgba(0,0,0,0.35),inset 0 0 0 1px rgba(0,0,0,0.25);} .ds-chip+.ds-chip{margin-bottom:calc(var(--cw) * -0.84);} .ds-chip.r{--base:#c8372d;--spot:#e9e0cc;} .ds-chip.g{--base:#2f7d4a;--spot:#e9e0cc;} .ds-chip.w{--base:#e9e0cc;--spot:#2f5fa8;} .ds-amt{font-weight:750;font-size:14px;color:#efe7d6;padding:2px 7px;border-radius:6px;background:rgba(8,20,22,0.55);}"
+    },
+    {
+      "name": "Toggle",
+      "kind": "input",
+      "refersTo": "",
+      "description": "Switch; on state is lamp with a lamp-ink knob.",
+      "html": "<label class=\"ds-tog\"><input type=\"checkbox\" checked><span class=\"ds-track\"></span>Sit out next hand</label>",
+      "css": ".ds-tog{font-family:'Figtree Variable','Figtree',ui-sans-serif,system-ui,sans-serif;font-variant-numeric:tabular-nums;display:inline-flex;align-items:center;gap:10px;font-size:14px;color:#d9ceb8;background:#160f0b;padding:14px;cursor:pointer;} .ds-tog input{position:absolute;opacity:0;} .ds-track{position:relative;width:36px;height:21px;border-radius:999px;background:rgba(239,231,214,0.14);transition:background-color 180ms;} .ds-track::after{content:'';position:absolute;top:3px;left:3px;width:15px;height:15px;border-radius:50%;background:#d9ceb8;transition:transform 220ms cubic-bezier(0.16,1,0.3,1);} .ds-tog input:checked+.ds-track{background:#f2b350;} .ds-tog input:checked+.ds-track::after{transform:translateX(15px);background:#2a1a05;} .ds-tog input:focus-visible+.ds-track{outline:2px solid #f2b350;outline-offset:2px;}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Kitchen Table at 22:00",
+    "overview": "The game is played at a friend's fold-out table, not in a casino. The room is a dark walnut ground (a flat vertical gradient from walnut to deeper walnut, closed by a radial vignette), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.\n\nOne lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or teal, quiet and legible at night.\n\nHierarchy is carried by scale, weight and position, never by colour or ornament. The pot and the amount to call are the largest things on screen; stacks, blinds and timers are set in a single workhorse sans with tabular numerals so numbers never jitter. Time is shown as exact-length bars, not rings or spinners.",
+    "keyCharacteristics": [
+      "Walnut room, teal felt topper, clay chips, bone paper cards: four materials, nothing else.",
+      "One amber lamp, reserved for action, the acting seat, focus and the turn timer.",
+      "Scale-only hierarchy: pot and amount-to-call are huge, labels are small and muted.",
+      "One sans family (Figtree Variable, self-hosted), tabular numerals everywhere.",
+      "Container-sized seats (cq units) so faces dominate at any viewport.",
+      "Textures are inline SVG and CSS gradients only; no shipping rasters."
+    ],
+    "rules": [
+      {
+        "name": "The One Lamp Rule",
+        "body": "Amber appears only on something you can do now (enabled action buttons, the sit-down hover, toggles, slider thumb), on the seat that must act, on its turn timer, and on keyboard focus. Never on decoration, labels, headings or idle state. Lamp *light* (the low-alpha warm radial pool in the room, the faint warm wash at the top of the lobby) is atmosphere, not paint, and never forms a solid shape.",
+        "section": "colors"
+      },
+      {
+        "name": "The Chips Are Money Rule",
+        "body": "Clay-chip hues belong to chips. They are never used for UI states, categories or accents (the one exception is the blind clock turning chip-green during a break).",
+        "section": "colors"
+      },
+      {
+        "name": "The Dim Room Rule",
+        "body": "When someone must act, every other occupied seat drops to `brightness(0.7) saturate(0.85)` and the felt deepens one step to `felt-700`. Contrast moves toward the actor; nothing else is added.",
+        "section": "colors"
+      },
+      {
+        "name": "The Scale-Only Rule",
+        "body": "Importance is expressed by size and weight, not by colour, boxes or ornaments. The two biggest numbers on screen are the pot and what it costs you to stay in.",
+        "section": "typography"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "Every number is set with tabular numerals so stacks, timers and blinds never shift width as they change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Objects Cast Shadows Rule",
+        "body": "Only things that would cast a shadow on a real table (felt, cards, chips, button) or that float above it (sheets, toasts) get one. Bars, panels and seats stay flat.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep amber (`lamp`) to enabled actions, the acting seat, its turn timer and focus.",
+      "Do make the pot and the amount to call the largest type on screen (800 weight, tight negative tracking).",
+      "Do set every number with tabular numerals.",
+      "Do size seats from the room container (cq units) so faces dominate.",
+      "Do draw felt as a rounded square on a dark rail ring, with the noise nap and a 1.5px dashed stitch seam.",
+      "Do show time as exact-length bars that drain left to right.",
+      "Do use one clay colour per denomination, choosing the low or high set from the small blind.",
+      "Do build textures from inline SVG and CSS gradients; self-host the font."
+    ],
+    "donts": [
+      "Don't draw a green casino oval or grey seat boxes.",
+      "Don't put amber on decoration, headings, labels, tabs, idle states or chip denominations.",
+      "Don't add wood-grain texture to the walnut; the room is a flat gradient with a vignette.",
+      "Don't use chip colours for UI states or categories.",
+      "Don't use uppercase tracked labels; labels are sentence case at 12.5–13px.",
+      "Don't ship raster textures or remote font files."
+    ]
+  }
+}

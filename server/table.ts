@@ -1,9 +1,9 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { bestHand, shuffledDeck } from './cards';
-import { formatChips as fc } from '../shared/presets';
+import { formatChips as fc, payoutAmounts, sanitizeRules } from '../shared/presets';
 import type {
   BlindLevel, Card, ClockView, HandView, LedgerRow, Legal, LogEntry, PlayerStatus,
-  PublicPlayer, RebuyOffer, Street, TableSettings, TableView, WinnerView,
+  PublicPlayer, RebuyOffer, ResultsView, Street, TableSettings, TableView, WinnerView,
 } from '../shared/types';
 
 /* ------------------------------------------------------------------ */
@@ -23,8 +23,14 @@ export interface Player {
   isHost: boolean;
   buyIn: number;
   cashOut: number;
+  /** Chips that left play without being cashed out (tournament leave/removal). */
+  forfeited: number;
   rebuys: number;
   addOnTaken: boolean;
+  /** Has bought in to this game (counts as an entry for payouts). */
+  entered: boolean;
+  timeBankMs: number;
+  place: number | null;
   camOn: boolean;
   micOn: boolean;
   /** runtime only */
@@ -61,6 +67,8 @@ interface Hand {
   toAct: number | null; // index into players
   turnEndsAt: number | null;
   turnMs: number | null;
+  usingBank: boolean;
+  bankStartedAt: number | null;
   winners: WinnerView[] | null;
   finished: boolean;
   runout: boolean;
@@ -78,13 +86,16 @@ export interface TableSnapshot {
   createdAt: number;
   lastActive: number;
   settings: TableSettings;
-  status: 'waiting' | 'running' | 'paused';
+  status: 'waiting' | 'running' | 'paused' | 'finished';
   players: Player[];
   clock: Clock;
   handNumber: number;
   lastDealerSeat: number | null;
   log: LogEntry[];
   hand: Hand | null;
+  eliminated?: string[];
+  buyEvents?: { playerId: string; kind: 'rebuy' | 'addon' }[];
+  playedMs?: number;
 }
 
 export class GameError extends Error {}
@@ -101,7 +112,15 @@ export class Table {
   createdAt: number;
   lastActive: number;
   settings: TableSettings;
-  status: 'waiting' | 'running' | 'paused' = 'waiting';
+  status: 'waiting' | 'running' | 'paused' | 'finished' = 'waiting';
+  /** Player ids in the order they were knocked out (first out first). */
+  eliminated: string[] = [];
+  /** Every rebuy and add-on in order, for the payout rotation. */
+  buyEvents: { playerId: string; kind: 'rebuy' | 'addon' }[] = [];
+  /** Play time (excluding pauses) since the first start. */
+  playedMs = 0;
+  playingSince: number | null = null;
+  shuffling = 0;
   players: Player[] = [];
   clock: Clock = { levelIndex: 0, onBreak: false, elapsedMs: 0, runningSince: null };
   handNumber = 0;
@@ -129,21 +148,28 @@ export class Table {
       status: this.status, players: this.players.map((p) => ({ ...p, connections: 0 })),
       clock: { ...this.clock }, handNumber: this.handNumber, lastDealerSeat: this.lastDealerSeat,
       log: this.log, hand: this.hand,
+      eliminated: this.eliminated, buyEvents: this.buyEvents, playedMs: this.played(),
     };
   }
 
   static restore(s: TableSnapshot): Table {
-    const t = new Table(s.settings, s.id);
+    const t = new Table({ ...s.settings, rules: sanitizeRules(s.settings.rules) }, s.id);
     t.createdAt = s.createdAt;
     t.lastActive = s.lastActive;
-    t.players = s.players.map((p) => ({ ...p, connections: 0, camOn: false, micOn: false }));
+    t.players = s.players.map((p) => ({
+      ...p, forfeited: p.forfeited ?? 0, entered: p.entered ?? p.buyIn > 0, timeBankMs: p.timeBankMs ?? 0, place: p.place ?? null,
+      connections: 0, camOn: false, micOn: false,
+    }));
+    t.eliminated = s.eliminated ?? [];
+    t.buyEvents = s.buyEvents ?? [];
+    t.playedMs = s.playedMs ?? 0;
     t.handNumber = s.handNumber;
     t.lastDealerSeat = s.lastDealerSeat;
     t.log = s.log ?? [];
     // freeze the clock where it was
     const c = s.clock;
     t.clock = { ...c, elapsedMs: c.elapsedMs + (c.runningSince ? s.lastActive - c.runningSince : 0), runningSince: null };
-    t.status = s.status === 'waiting' ? 'waiting' : 'paused';
+    t.status = s.status === 'waiting' || s.status === 'finished' ? s.status : 'paused';
     if (s.hand && !s.hand.finished) {
       // A restart interrupted a hand: void it and give every player their chips back.
       for (const hp of s.hand.players) {
@@ -203,21 +229,30 @@ export class Table {
 
   /* ---------------- clock ---------------- */
 
+  /** Blinds for a level. The last level in the structure lasts for the rest of the game. */
   levelAt(index: number): BlindLevel {
     const lv = this.rules.levels;
-    if (index < lv.length) return lv[index];
-    const last = lv[lv.length - 1];
-    const k = 2 ** (index - lv.length + 1);
-    return { sb: last.sb * k, bb: last.bb * k, ante: last.ante * k };
+    return lv[Math.min(index, lv.length - 1)];
   }
 
+  private isFinalLevel(index = this.clock.levelIndex) {
+    return index >= this.rules.levels.length - 1;
+  }
+
+  /** Length of the current phase in ms; Infinity on the final level. */
   private phaseMs(): number {
     if (this.clock.onBreak) return this.rules.breakMinutes * 60000;
+    if (this.isFinalLevel()) return Infinity;
     return this.rules.levelMinutes * 60000;
   }
 
   private phaseElapsed(now = Date.now()): number {
     return this.clock.elapsedMs + (this.clock.runningSince ? now - this.clock.runningSince : 0);
+  }
+
+  /** Play time since the first start, excluding pauses. */
+  played(now = Date.now()) {
+    return this.playedMs + (this.playingSince ? now - this.playingSince : 0);
   }
 
   private startClock() {
@@ -233,7 +268,11 @@ export class Table {
 
   /** Called every second by the server loop. */
   tick(now = Date.now()) {
+    if (this.status === 'running' && this.isTournament() && this.players.some((p) => p.status === 'seated' && p.stack === 0 && p.place == null)) {
+      if (this.checkEliminations()) this.touch();
+    }
     if (this.status !== 'running' || this.rules.levelMinutes <= 0 || this.clock.runningSince == null) return;
+    if (!this.clock.onBreak && this.isFinalLevel()) return;
     let changed = false;
     while (this.phaseElapsed(now) >= this.phaseMs()) {
       const overflow = this.phaseElapsed(now) - this.phaseMs();
@@ -269,6 +308,7 @@ export class Table {
     if (ru.enabled && ru.untilLevel > 0 && this.clock.levelIndex + 1 === ru.untilLevel + 1) {
       this.addLog('system', 'Rebuy period is over.');
     }
+    if (this.isFinalLevel()) this.addLog('system', 'Final level: these blinds stay until the game ends.');
   }
 
   /* ---------------- joining & seating ---------------- */
@@ -277,7 +317,7 @@ export class Table {
     const p: Player = {
       id: randomUUID(), token: randomBytes(18).toString('base64url'), name: cleanName(name),
       seat: null, requestedSeat: null, requestedBuyIn: 0, stack: 0, status: 'watching', sittingOut: false,
-      isHost, buyIn: 0, cashOut: 0, rebuys: 0, addOnTaken: false, camOn: false, micOn: false, connections: 0,
+      isHost, buyIn: 0, cashOut: 0, forfeited: 0, rebuys: 0, addOnTaken: false, entered: false, timeBankMs: 0, place: null, camOn: false, micOn: false, connections: 0,
     };
     this.players.push(p);
     return p;
@@ -320,6 +360,8 @@ export class Table {
     p.stack += amount;
     p.buyIn += amount;
     p.sittingOut = false;
+    p.place = null;
+    if (!p.entered) { p.entered = true; p.timeBankMs = this.rules.timeBank.startSeconds * 1000; }
     this.addLog('system', `${p.name} sits in seat ${seat} with ${fc(amount)}.`);
     this.maybeStartHand();
   }
@@ -343,7 +385,12 @@ export class Table {
     this.touch();
   }
 
-  /** Leave the seat and cash out the current stack. */
+  /** Whether leaving the table pays out the stack. Tournaments keep chips in play once the game has started. */
+  canCashOut() {
+    return this.rules.cashOut || this.status === 'waiting';
+  }
+
+  /** Leave the seat. Cashes out the stack when the rules allow it, otherwise the chips go out of play. */
   leaveSeat(p: Player, reason = 'leaves the table') {
     if (p.status === 'pending') {
       p.status = 'watching';
@@ -363,12 +410,26 @@ export class Table {
         this.advance();
       }
     }
-    p.cashOut += p.stack;
-    this.addLog('system', `${p.name} ${reason} with ${fc(p.stack)}.`);
+    if (this.status === 'waiting') {
+      p.buyIn -= p.stack;
+      p.entered = false;
+      this.addLog('system', `${p.name} ${reason}.`);
+    } else if (this.canCashOut()) {
+      p.cashOut += p.stack;
+      this.addLog('system', `${p.name} ${reason} with ${fc(p.stack)}.`);
+    } else {
+      p.forfeited += p.stack;
+      this.addLog('system', `${p.name} ${reason}. Their ${fc(p.stack)} in chips go out of play (no cash-outs in this game).`);
+    }
+    const wasEntered = p.entered && this.status !== 'waiting';
     p.stack = 0;
     p.seat = null;
     p.status = 'watching';
     p.sittingOut = false;
+    if (wasEntered && this.isTournament() && p.place == null) {
+      this.eliminate([p]);
+      this.checkEliminations();
+    }
     this.touch();
   }
 
@@ -412,6 +473,8 @@ export class Table {
     let reason: string | null = null;
     if (!r.enabled) reason = 'Rebuys are off for this game.';
     else if (r.untilLevel > 0 && this.isTournament() && levelNo > r.untilLevel) reason = `Rebuys closed after level ${r.untilLevel}.`;
+    else if (r.untilMinutes > 0 && this.status !== 'waiting' && this.played() > r.untilMinutes * 60000) reason = `Rebuys closed ${r.untilMinutes} minutes after the start.`;
+    else if (p.place != null) reason = 'You are out of this tournament.';
     else if (r.maxPerPlayer > 0 && p.rebuys >= r.maxPerPlayer) reason = `You have used all ${r.maxPerPlayer} rebuys.`;
     else if (r.maxStackToRebuy === 0 && p.stack > 0) reason = 'You can rebuy when you are out of chips.';
     else if (r.maxStackToRebuy > 0 && p.stack > r.maxStackToRebuy) reason = `You can rebuy at ${fc(r.maxStackToRebuy)} or less.`;
@@ -431,6 +494,7 @@ export class Table {
     p.buyIn += amt;
     p.rebuys++;
     p.sittingOut = false;
+    this.buyEvents.push({ playerId: p.id, kind: 'rebuy' });
     this.addLog('system', `${p.name} rebuys for ${fc(amt)}.`);
     this.maybeStartHand();
     this.touch();
@@ -442,6 +506,7 @@ export class Table {
     p.stack += offer.addOnAmount;
     p.buyIn += offer.addOnAmount;
     p.addOnTaken = true;
+    this.buyEvents.push({ playerId: p.id, kind: 'addon' });
     this.addLog('system', `${p.name} takes the add-on for ${fc(offer.addOnAmount)}.`);
     this.touch();
   }
@@ -467,13 +532,49 @@ export class Table {
   start(hostId: string) {
     this.requireHost(hostId);
     if (this.status === 'running') return;
+    if (this.status === 'finished') throw new GameError('This game is over. Open a new table for a rematch.');
     const wasPaused = this.status === 'paused';
+    if (!wasPaused && this.players.filter((p) => p.status === 'seated' && p.stack > 0).length < 2) {
+      throw new GameError('You need at least two players with chips to start.');
+    }
     this.status = 'running';
     if (this.rules.levelMinutes > 0) this.startClock();
-    this.addLog('system', wasPaused ? 'Game resumed.' : 'Game started. Shuffle up and deal.');
-    if (!wasPaused) this.announceLevelStart();
-    this.maybeStartHand();
+    if (this.playingSince == null) this.playingSince = Date.now();
+    this.addLog('system', wasPaused ? 'Game resumed.' : 'Game started. Shuffling seats…');
+    if (!wasPaused) {
+      this.announceLevelStart();
+      this.shuffleSeats();
+    } else {
+      this.maybeStartHand();
+    }
     this.touch();
+  }
+
+  /** Shuffle the seated players around the table three times, then deal. */
+  private shuffleSeats() {
+    const STEP = FAST ? 1 : 1300;
+    const step = (n: number) => {
+      if (this.status !== 'running') { this.shuffling = 0; this.touch(); return; }
+      const seated = this.players.filter((p) => p.status === 'seated' && p.seat != null);
+      const seats = seated.map((p) => p.seat!);
+      for (let i = seats.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [seats[i], seats[j]] = [seats[j], seats[i]];
+      }
+      // make sure something visibly moves
+      if (seats.length > 1 && seated.every((p, i) => p.seat === seats[i])) seats.push(seats.shift()!);
+      seated.forEach((p, i) => { p.seat = seats[i]; });
+      this.shuffling = n;
+      this.touch();
+      if (n < 3) this.later(STEP, () => step(n + 1));
+      else this.later(STEP, () => {
+        this.shuffling = 0;
+        this.addLog('system', `Seats are set: ${seated.slice().sort((a, b) => a.seat! - b.seat!).map((p) => p.name).join(', ')}. Shuffle up and deal.`);
+        this.maybeStartHand();
+        this.touch();
+      });
+    };
+    step(1);
   }
 
   private announceLevelStart() {
@@ -486,6 +587,7 @@ export class Table {
     if (this.status !== 'running') return;
     this.status = 'paused';
     this.stopClock();
+    if (this.playingSince != null) { this.playedMs = this.played(); this.playingSince = null; }
     if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.nextHandTimer = null; }
     this.addLog('system', this.hand && !this.hand.finished ? 'Host paused the game. This hand plays out first.' : 'Host paused the game.');
     this.touch();
@@ -493,7 +595,7 @@ export class Table {
 
   setLevel(hostId: string, levelIndex: number) {
     this.requireHost(hostId);
-    const n = Math.max(0, Math.min(200, Math.round(levelIndex)));
+    const n = Math.max(0, Math.min(this.rules.levels.length - 1, Math.round(levelIndex)));
     this.clock.levelIndex = n;
     this.clock.onBreak = false;
     this.clock.elapsedMs = 0;
@@ -510,6 +612,7 @@ export class Table {
       if (s.rules.levelMinutes > 0) this.startClock();
       else this.stopClock();
     }
+    if (this.clock.levelIndex > s.rules.levels.length - 1) this.clock.levelIndex = s.rules.levels.length - 1;
     if (oldMs !== s.rules.levelMinutes && this.clock.elapsedMs > this.phaseMs()) this.clock.elapsedMs = 0;
     this.addLog('system', `Host updated the rules: ${s.rules.name}.`);
     this.touch();
@@ -537,7 +640,7 @@ export class Table {
   }
 
   private maybeStartHand() {
-    if (this.status !== 'running' || this.clock.onBreak) return;
+    if (this.status !== 'running' || this.clock.onBreak || this.shuffling) return;
     if (this.hand && !this.hand.finished) return;
     if (this.nextHandTimer) return;
     if (this.eligibleForHand().length < 2) return;
@@ -559,6 +662,11 @@ export class Table {
     const bbSeat = nextSeat(sbSeat);
     this.lastDealerSeat = dealerSeat;
     this.handNumber++;
+    const tb = this.rules.timeBank;
+    if (tb.enabled && tb.everyHands > 0 && tb.addSeconds > 0 && this.handNumber > 1 && (this.handNumber - 1) % tb.everyHands === 0) {
+      for (const p of this.players) if (p.status === 'seated') p.timeBankMs = Math.min(tb.maxSeconds * 1000, p.timeBankMs + tb.addSeconds * 1000);
+      this.addLog('system', `Time banks topped up by ${tb.addSeconds}s.`);
+    }
 
     const blinds = this.levelAt(this.clock.levelIndex);
     const deck = shuffledDeck();
@@ -568,7 +676,7 @@ export class Table {
     }));
     const h: Hand = {
       number: this.handNumber, deck, board: [], street: 'preflop', players, dealerSeat, sbSeat, bbSeat, blinds,
-      currentBet: 0, lastRaiseSize: blinds.bb, fullRaiseCount: 0, toAct: null, turnEndsAt: null, turnMs: null,
+      currentBet: 0, lastRaiseSize: blinds.bb, fullRaiseCount: 0, toAct: null, turnEndsAt: null, turnMs: null, usingBank: false, bankStartedAt: null,
       winners: null, finished: false, runout: false,
     };
     this.hand = h;
@@ -638,25 +746,48 @@ export class Table {
   private startTurn() {
     const h = this.hand!;
     if (this.turnTimer) { clearTimeout(this.turnTimer); this.timers.delete(this.turnTimer); this.turnTimer = null; }
+    h.usingBank = false;
+    h.bankStartedAt = null;
     if (h.toAct == null) { h.turnEndsAt = null; h.turnMs = null; return; }
     const hp = h.players[h.toAct];
     const p = this.player(hp.id);
     let ms: number | null = this.rules.turnSeconds > 0 ? this.rules.turnSeconds * 1000 : null;
-    if (p && p.connections === 0) ms = Math.min(ms ?? DISCONNECTED_TURN_MS, DISCONNECTED_TURN_MS);
+    const away = !!p && p.connections === 0;
+    if (away) ms = Math.min(ms ?? DISCONNECTED_TURN_MS, DISCONNECTED_TURN_MS);
+    this.armTurn(hp.id, ms, () => {
+      // regular time is up: dip into the time bank if there is one
+      const bank = p?.timeBankMs ?? 0;
+      if (this.rules.timeBank.enabled && !away && bank > 0) {
+        h.usingBank = true;
+        h.bankStartedAt = Date.now();
+        this.addLog('action', `${p!.name} is using their time bank`);
+        this.armTurn(hp.id, bank, () => { if (p) p.timeBankMs = 0; h.usingBank = false; this.timeOut(); });
+        this.touch();
+      } else this.timeOut();
+    });
+  }
+
+  private armTurn(who: string, ms: number | null, onExpire: () => void) {
+    const h = this.hand!;
+    if (this.turnTimer) { clearTimeout(this.turnTimer); this.timers.delete(this.turnTimer); this.turnTimer = null; }
     h.turnMs = ms;
     h.turnEndsAt = ms ? Date.now() + ms : null;
-    if (ms) {
-      const handNo = h.number;
-      const who = hp.id;
-      this.turnTimer = this.later(ms, () => {
-        const cur = this.hand;
-        if (!cur || cur.number !== handNo || cur.finished || cur.toAct == null || cur.players[cur.toAct].id !== who) return;
-        const me = cur.players[cur.toAct];
-        if (me.bet >= cur.currentBet) this.applyAction(me, 'check', 0, true);
-        else this.applyAction(me, 'fold', 0, true);
-        this.touch();
-      });
-    }
+    if (!ms) return;
+    const handNo = h.number;
+    this.turnTimer = this.later(ms, () => {
+      const cur = this.hand;
+      if (!cur || cur.number !== handNo || cur.finished || cur.toAct == null || cur.players[cur.toAct].id !== who) return;
+      onExpire();
+    });
+  }
+
+  private timeOut() {
+    const cur = this.hand;
+    if (!cur || cur.finished || cur.toAct == null) return;
+    const me = cur.players[cur.toAct];
+    if (me.bet >= cur.currentBet) this.applyAction(me, 'check', 0, true);
+    else this.applyAction(me, 'fold', 0, true);
+    this.touch();
   }
 
   /** Re-arm the timer when someone (dis)connects on their turn. */
@@ -695,6 +826,11 @@ export class Table {
   private applyAction(hp: HandPlayer, type: string, amount = 0, timedOut = false) {
     const h = this.hand!;
     const p = this.player(hp.id)!;
+    if (h.usingBank && h.bankStartedAt != null && h.toAct != null && h.players[h.toAct].id === hp.id) {
+      p.timeBankMs = Math.max(0, p.timeBankMs - (Date.now() - h.bankStartedAt));
+      h.usingBank = false;
+      h.bankStartedAt = null;
+    }
     const legal = this.legal(hp.id)!;
     const pay = (x: number) => {
       const a = Math.min(x, p.stack);
@@ -904,13 +1040,15 @@ export class Table {
     for (const hp of h.players) {
       const p = this.player(hp.id);
       if (p && p.status === 'seated' && p.stack === 0) {
-        this.addLog('system', `${p.name} is out of chips.`);
+        const offer = this.rebuyOffer(p);
+        this.addLog('system', offer?.allowed ? `${p.name} is out of chips and can rebuy.` : `${p.name} is out of chips.`);
       }
     }
+    if (this.isTournament()) this.checkEliminations(h);
     if (this.nextHandTimer) clearTimeout(this.nextHandTimer);
     this.nextHandTimer = this.later(delay, () => {
       this.nextHandTimer = null;
-      if (this.status === 'running' && !this.clock.onBreak && this.eligibleForHand().length >= 2) this.startHand();
+      if (this.status === 'running' && !this.clock.onBreak && !this.shuffling && this.eligibleForHand().length >= 2) this.startHand();
       else { this.touch(); }
     });
   }
@@ -924,29 +1062,99 @@ export class Table {
     this.touch();
   }
 
+  /* ---------------- tournament results ---------------- */
+
+  private entrants() { return this.players.filter((p) => p.entered); }
+
+  private eliminate(list: Player[]) {
+    for (const p of list) {
+      if (p.place != null) continue;
+      p.place = this.entrants().filter((x) => x.place == null).length;
+      this.eliminated.push(p.id);
+      this.addLog('system', `${p.name} finishes in place ${p.place}.`);
+    }
+  }
+
+  /**
+   * Knock out busted players who can no longer rebuy, and crown the winner when one
+   * player is left. Returns true when anything changed.
+   */
+  private checkEliminations(hand?: Hand): boolean {
+    if (!this.isTournament() || this.status === 'waiting' || this.status === 'finished') return false;
+    const contrib = (id: string) => hand?.players.find((x) => x.id === id)?.contrib ?? 0;
+    const out = this.players
+      .filter((p) => p.entered && p.place == null && p.status === 'seated' && p.stack === 0)
+      .filter((p) => !(this.hand && !this.hand.finished && this.hand.players.some((x) => x.id === p.id && !x.folded)))
+      .filter((p) => !this.rebuyOffer(p)?.allowed)
+      .sort((a, b) => contrib(a.id) - contrib(b.id)); // smaller stack going in finishes lower
+    let changed = false;
+    if (out.length) { this.eliminate(out); changed = true; }
+    const alive = this.entrants().filter((p) => p.place == null);
+    const waitingOnRebuy = alive.some((p) => p.stack === 0);
+    if (alive.length === 1 && !waitingOnRebuy && this.eliminated.length > 0) {
+      const w = alive[0];
+      w.place = 1;
+      this.status = 'finished';
+      this.stopClock();
+      if (this.playingSince != null) { this.playedMs = this.played(); this.playingSince = null; }
+      if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.nextHandTimer = null; }
+      this.addLog('system', `${w.name} wins the tournament!`);
+      changed = true;
+    }
+    return changed;
+  }
+
+  private results(): ResultsView | null {
+    const pr = this.rules.payout;
+    if (!pr.enabled) return null;
+    const entries = this.entrants().length;
+    const events = this.buyEvents.map((e) => e.kind);
+    const amounts = payoutAmounts(entries, events, pr, entries);
+    const paid: Record<string, number> = {};
+    for (const p of this.entrants()) paid[p.id] = pr.buyIn;
+    for (const e of this.buyEvents) paid[e.playerId] = (paid[e.playerId] ?? 0) + (e.kind === 'addon' ? pr.addOn : pr.rebuy);
+    return {
+      currency: pr.currency,
+      entries,
+      rebuys: events.filter((e) => e === 'rebuy').length,
+      addOns: events.filter((e) => e === 'addon').length,
+      pool: amounts.reduce((a, b) => a + b, 0),
+      paid,
+      places: amounts.map((prize, i) => {
+        const p = this.players.find((x) => x.place === i + 1);
+        return { place: i + 1, playerId: p?.id ?? null, name: p?.name ?? null, prize };
+      }),
+    };
+  }
+
   /* ---------------- views ---------------- */
 
   private clockView(): ClockView {
-    const levelMs = this.phaseMs();
-    const remainingMs = this.rules.levelMinutes > 0 ? Math.max(0, levelMs - this.phaseElapsed()) : 0;
     const idx = this.clock.levelIndex;
+    const timed = this.rules.levelMinutes > 0;
+    const final = timed && !this.clock.onBreak && this.isFinalLevel(idx);
+    const levelMs = timed && !final ? this.phaseMs() : 0;
+    const remainingMs = levelMs ? Math.max(0, levelMs - this.phaseElapsed()) : 0;
     return {
       running: this.clock.runningSince != null,
       levelIndex: idx,
       level: this.levelAt(idx),
-      next: this.rules.levelMinutes > 0 ? this.levelAt(this.clock.onBreak ? idx + 1 : idx + 1) : null,
+      next: timed && !this.isFinalLevel(idx) ? this.levelAt(idx + 1) : null,
+      final,
       levelMs,
       remainingMs,
       onBreak: this.clock.onBreak,
+      rebuyEndsInMs: this.rules.rebuy.enabled && this.rules.rebuy.untilMinutes > 0 && this.status !== 'waiting' && this.status !== 'finished'
+        ? Math.max(0, this.rules.rebuy.untilMinutes * 60000 - this.played()) : null,
       at: Date.now(),
     };
   }
 
   private ledger(): LedgerRow[] {
     return this.players
-      .filter((p) => p.buyIn > 0 || p.cashOut > 0)
+      .filter((p) => p.buyIn > 0 || p.cashOut > 0 || p.forfeited > 0)
       .map((p) => ({
-        playerId: p.id, name: p.name, buyIn: p.buyIn, cashOut: p.cashOut, stack: p.stack,
+        playerId: p.id, name: p.name, buyIn: p.buyIn, cashOut: p.cashOut, forfeited: p.forfeited, stack: p.stack,
         net: p.cashOut + p.stack - p.buyIn, rebuys: p.rebuys,
       }))
       .sort((a, b) => b.net - a.net);
@@ -963,6 +1171,9 @@ export class Table {
           id: p.id, name: p.name, seat: p.seat, requestedSeat: p.requestedSeat, requestedBuyIn: p.requestedBuyIn,
           stack: p.stack, status: p.status, sittingOut: p.sittingOut, connected: p.connections > 0, isHost: p.isHost,
           camOn: p.camOn, micOn: p.micOn, rebuys: p.rebuys, addOnTaken: p.addOnTaken,
+          timeBankMs: h && h.usingBank && h.bankStartedAt != null && h.toAct != null && h.players[h.toAct].id === p.id
+            ? Math.max(0, p.timeBankMs - (Date.now() - h.bankStartedAt)) : p.timeBankMs,
+          place: p.place,
           inHand: !!hp, hasCards: !!hp && !hp.folded, bet: hp?.bet ?? 0, folded: hp?.folded ?? false,
           allIn: hp?.allIn ?? false, lastAction: hp?.lastAction ?? null,
           shownCards: hp && hp.shown ? hp.hole : null,
@@ -973,11 +1184,11 @@ export class Table {
       pots: h.finished ? [] : this.collectedPots(),
       potTotal: h.finished ? 0 : h.players.reduce((s, x) => s + x.contrib - x.bet, 0),
       currentBet: h.currentBet, dealerSeat: h.dealerSeat, sbSeat: h.sbSeat, bbSeat: h.bbSeat,
-      toActId: h.toAct != null ? h.players[h.toAct].id : null, turnEndsAt: h.turnEndsAt, turnMs: h.turnMs,
+      toActId: h.toAct != null ? h.players[h.toAct].id : null, turnEndsAt: h.turnEndsAt, turnMs: h.turnMs, usingBank: h.usingBank,
       winners: h.winners, blinds: h.blinds,
     } : null;
     return {
-      id: this.id, settings: this.settings, status: this.status, players, hand,
+      id: this.id, settings: this.settings, status: this.status, shuffling: this.shuffling, results: this.results(), players, hand,
       clock: this.clockView(), ledger: this.ledger(), log: this.log.slice(-120),
       you: {
         playerId: me?.id ?? null,
