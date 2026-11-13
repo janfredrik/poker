@@ -185,7 +185,7 @@ A dark warm-wood night palette with a cool teal playing surface, bone paper for 
 - **Lamp Amber** (`lamp`): the single saturated control colour. Fills primary action buttons (Check/Call, Raise, Sit down, Start, Open the table), borders the acting seat, fills the turn-timer bar, the raise-slider thumb, toggle-on track, text caret, selection and the 2px focus outline. Hover lifts to **Lamp Bright** (`lamp-hi`); text on amber is **Lamp Ink** (`lamp-ink`). **Lamp Glow** (`lamp-glow`) is the diffuse under-shadow of amber elements and the acting seat.
 
 ### Secondary
-- **Teal Felt** (`felt-600`, resting; `felt-700` when a turn is live, also card backs and the lobby form): the playing surface. `felt-800` and `felt-500` bound the family. **Felt Thread** (`felt-line`) draws the stitched seam, empty board slots and borders of controls set on felt. **Felt Text** (`felt-text`) and **Felt Hint** (`felt-hint`) replace bone and muted when type sits on teal.
+- **Teal Felt** (`felt-600`, resting; `felt-700` when a turn is live, also card backs and the buy-in sheet; the lobby form is `felt-600`): the playing surface. `felt-800` and `felt-500` bound the family. **Felt Thread** (`felt-line`) draws the stitched seam, empty board slots and borders of controls set on felt. **Felt Text** (`felt-text`) and **Felt Hint** (`felt-hint`) replace bone and muted when type sits on teal.
 
 ### Tertiary
 - **Clay Chips** (`chip-bone`, `chip-red`, `chip-blue`, `chip-green`, `chip-black`): stack and bet colours only, one colour per denomination. Low set (small blind not a multiple of 25): bone 1, red 5, green 25, black 100, blue 500. High set: bone 25, red 100, green 500, black 1000, blue 5000. Bone chips are spotted blue; all others are spotted bone. The wordmark's small red-and-bone chip mark is the only other use.
@@ -198,7 +198,7 @@ A dark warm-wood night palette with a cool teal playing surface, bone paper for 
 - **Good / Bad** (`good`, `bad`): ledger up/down figures, success notes and destructive buttons only.
 
 ### Named Rules
-**The One Lamp Rule.** Amber appears only on something you can do now (enabled action buttons, the sit-down hover, toggles, slider thumb), on the seat that must act, on its turn timer, and on keyboard focus. Never on decoration, labels, headings or idle state. Lamp *light* (the low-alpha warm radial pool in the room, the faint warm wash at the top of the lobby) is atmosphere, not paint, and never forms a solid shape.
+**The One Lamp Rule.** Amber appears only on something you can do now (enabled action buttons, the sit-down hover, toggles, slider thumb), on the seat that must act, on its turn timer, and on keyboard focus. Never on decoration, labels, headings or idle state. Lamp *light* (the low-alpha warm radial pool in the room, the lobby lamp that switches on over the dealt hand) is atmosphere, not paint, and never forms a solid shape.
 
 **The Chips Are Money Rule.** Clay-chip hues belong to chips. They are never used for UI states, categories or accents (the one exception is the blind clock turning chip-green during a break).
 
@@ -213,7 +213,7 @@ A dark warm-wood night palette with a cool teal playing surface, bone paper for 
 **Character:** One friendly geometric workhorse doing every job. Weight and size carry hierarchy; big numbers go to 800 with tight negative tracking, labels stay small, sentence-case and muted.
 
 ### Hierarchy
-- **Display** (800, clamp(30px, 4.2vw, 58px), lh 0.95, -0.035em): the pot amount. The lobby title uses the same voice larger (clamp(34px, 5.4vw, 64px), -0.04em).
+- **Display** (800, clamp(30px, 4.2vw, 58px), lh 0.95, -0.035em): the pot amount. The lobby title is the largest type in the app (clamp(46px, 9.4vw, 96px), lh 0.9, -0.045em), left-aligned on two lines with the second line in `bone-2`. The guest invitation title uses the table name at clamp(30px, 4.4vw, 60px), -0.04em; the buy-in amount on the sit-down sheet is 800 at clamp(34px, 6vw, 44px).
 - **Headline** (800, clamp(28px, 3vw, 44px), -0.035em): the amount to call / your status in the dock.
 - **Title** (800, 22px, -0.02em): current blinds in the top bar, sheet titles; felt waiting title at clamp(22px, 2.6vw, 34px).
 - **Body** (400, 15px, lh 1.45): default; seat names 650/14px, seat stacks 800/15px, buttons 650/15px (16px in the dock).
@@ -232,14 +232,14 @@ The room is a size container. The felt is inset 25% / 21% / 26% / 21% of it; sea
 
 Portrait (aspect ratio at most 4/5): the felt becomes tall (inset 17% / 23% / 19% / 23%), seats run down both sides at clamp(84px, 24cqw, 150px), card sizes step down. Below 900px the dock stacks status over a full-width button grid; below 560px the table name and wordmark text drop away and the clock leads the top bar.
 
-Spacing is an ad hoc 4 / 8 / 10 / 14 / 16 / 22px rhythm; dock and lobby padding scale with clamp(). The lobby is a centred single column: headline and lede, then the form set on its own felt topper (max 720px).
+Spacing is an ad hoc 4 / 8 / 10 / 14 / 16 / 22px rhythm; dock and lobby padding scale with clamp(). The lobby is one left-aligned 800px stage: headline and lede, then the form set on its own felt topper with a stitched seam. A dealt hand (two aces and the dealer button) straddles the topper's top-right rail, so the lede is held to min(44ch, 100% − 250px) to clear it (100% − 118px on phones, where the cards shrink to 62px).
 
 ## Elevation & Depth
 
 Depth is physical and sparse: the room is flat and vignetted, the felt sits on a dark rail ring with a deep drop shadow and an inset shading at its top edge, and only physical objects (cards, chips, dealer button) and floating surfaces (sheets, toasts, the overlay drawer) cast shadows. Panels and bars are flat walnut separated by hairlines.
 
 ### Shadow Vocabulary
-- **Felt on rail** (`box-shadow: 0 0 0 clamp(10px,1.5vmin,18px) var(--rail), 0 0 0 calc(… + 1px) rgba(239,231,214,.08), inset 0 2px 30px rgba(0,0,0,.45), 0 40px 80px -20px rgba(0,0,0,.7)`): every felt surface, including the lobby form (12px rail).
+- **Felt on rail** (`box-shadow: 0 0 0 clamp(10px,1.5vmin,18px) var(--rail), 0 0 0 calc(… + 1px) rgba(239,231,214,.08), inset 0 2px 30px rgba(0,0,0,.45), 0 40px 80px -20px rgba(0,0,0,.7)`): every felt surface, including the lobby form (14px rail) and the buy-in sheet (10px rail).
 - **Card** (`0 2px 0 rgba(0,0,0,.18), 0 6px 14px -4px rgba(0,0,0,.55)`): card edge and lift.
 - **Chip** (`0 2px 0 rgba(0,0,0,.35), 0 3px 6px rgba(0,0,0,.35), inset 0 0 0 1px rgba(0,0,0,.25)`): clay disc thickness.
 - **Lamp lift** (`0 18px 40px -12px var(--lamp-glow)` on the acting seat; `0 6px 18px -8px var(--lamp-glow)` under amber buttons; `0 -20px 50px -30px var(--lamp-glow)` above the dock on your turn).
@@ -269,6 +269,7 @@ Tactile and plain: a 1px press on `:active`, colour transitions at 160ms.
 
 ### Cards / Containers
 - **Sheet:** walnut-850, 16px radius, `line-2` border, 22px padding, floating shadow, over a blurred dim scrim.
+- **Felt sheet (buy-in slip):** the sit-down sheet is a small felt topper (`felt-700`, nap, 26px radius, 10px rail) instead of walnut. Seat number as title with the table name right in felt-hint; a dashed felt-thread well shows the buy-in as a spread chip stack beside the amount, updating live as a cash-game buy-in is typed. Fields switch to their on-felt treatment.
 - **Toast:** bone paper with ink text, 10px radius.
 - **Drawer:** walnut-900 with tabs underlined in bone (not amber); ledger and structure lists are hairline-ruled tables, right-aligned tabular numbers, up/down in good/bad.
 
@@ -292,7 +293,13 @@ A circular radial pool of warm light (min(52vmin, 560px)), screen-blended over t
 Current level and blinds (title size) beside an exact-length 5px bar that drains in bone-2, with remaining time and next level beneath. Breaks turn the bar chip-green, pauses turn it faint. The blind clock is not amber: it is not something you act on.
 
 ### Chip Stack (signature)
-Top-down clay discs in up to 3–5 short columns by denomination (largest first), overlapping by 84% of their width, with the amount in a dark rounded tag beside them.
+Top-down clay discs in up to 3–5 short columns by denomination (largest first), overlapping by 84% of their width, with the amount in a dark rounded tag beside them. A *spread* variant (the buy-in slip) hands a starting stack out the way a host would: only denominations at most a quarter of the amount, half the remainder into each, up to 4 columns of 9, so 5,000 reads as black, green, red and bone rather than one blue chip.
+
+### Guest Invitation (signature)
+A visitor opening the link who is not the host and has no seat sees the felt centre as an invitation: the table name huge, "Hosted by {host} · n of 9 seats taken", the blinds, starting stack and level length as big 800 numbers in a felt-thread-ruled row, and one large lamp button, "Take a seat", which opens the buy-in slip for the first open seat ("Table is full" disabled otherwise). In portrait the terms become a 2×2 grid and the hint drops away.
+
+### Lobby Opening (signature, the app's one authored entrance)
+On load the lamp switches on over the lobby stage with a short flicker (1.4s: on, off, on, settle) and the two aces are tossed onto the rail from the top right with heavy rotation, the dealer button dropping in after. The cards are decoration (aria-hidden), and on hover they lift apart as if someone is peeking. Reduced motion collapses all of it to the final state.
 
 ## Do's and Don'ts
 

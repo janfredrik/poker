@@ -23,9 +23,25 @@ function columns(amount: number, maxCols = 4, maxPerCol = 7) {
   return cols;
 }
 
-export function ChipStack({ amount, label = true, size = 'md' }: { amount: number; label?: boolean; size?: 'sm' | 'md' | 'lg' }) {
+/** A starting stack the way a host hands it out: a few of each smaller chip, not one big one. */
+function spreadColumns(amount: number) {
+  const usable = DENOMS.filter((d) => d.v <= amount / 4);
+  if (!usable.length) return columns(amount, 4, 9);
+  const cols: { c: string; n: number }[] = [];
+  let rest = Math.round(amount);
+  usable.slice(0, 4).forEach((d, i, all) => {
+    const share = i === all.length - 1 ? rest : rest * 0.5;
+    const n = Math.floor(share / d.v);
+    if (n <= 0) return;
+    rest -= n * d.v;
+    cols.push({ c: d.c, n: Math.min(n, 9) });
+  });
+  return cols;
+}
+
+export function ChipStack({ amount, label = true, size = 'md', spread = false }: { amount: number; label?: boolean; size?: 'sm' | 'md' | 'lg'; spread?: boolean }) {
   if (amount <= 0) return null;
-  const cols = columns(amount, size === 'lg' ? 5 : size === 'sm' ? 2 : 3, size === 'lg' ? 9 : size === 'sm' ? 4 : 6);
+  const cols = spread ? spreadColumns(amount) : columns(amount, size === 'lg' ? 5 : size === 'sm' ? 2 : 3, size === 'lg' ? 9 : size === 'sm' ? 4 : 6);
   return (
     <span className={`chips chips--${size}`}>
       <span className="chips__pile" aria-hidden="true">

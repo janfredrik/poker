@@ -3,6 +3,7 @@ import type { RuleSet } from '../../shared/types';
 import { BUILT_IN_RULESETS } from '../../shared/presets';
 import { call, prefs, tokens } from './lib/socket';
 import { RulesPicker } from './ui/RulesPicker';
+import { PlayingCard } from './table/Card';
 
 export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [name, setName] = useState(prefs.get('name'));
@@ -33,14 +34,20 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
 
   return (
     <main className="lobby">
-      <div className="lobby__lamp" aria-hidden="true" />
       <a className="wordmark lobby__mast" href="/">Poker</a>
-      <header className="lobby__head">
-        <h1 className="lobby__title">Deal a table for tonight</h1>
-        <p className="lobby__lede">No-limit Texas Hold'em on your own server. Set the rules, share the link, and see everyone's face at the table.</p>
-      </header>
+      <div className="lobby__stage">
+        <div className="lobby__lamp" aria-hidden="true" />
+        <header className="lobby__head">
+          <h1 className="lobby__title">Deal a table <span>for tonight</span></h1>
+          <p className="lobby__lede">No-limit Texas Hold'em on your own server. Set the rules, share the link, and see everyone's face at the table.</p>
+        </header>
 
       <form className="lobby__card" onSubmit={create}>
+        <div className="spread" aria-hidden="true">
+          <span className="spread__card spread__card--a"><PlayingCard card="As" size="lg" /></span>
+          <span className="spread__card spread__card--b"><PlayingCard card="Ah" size="lg" /></span>
+          <span className="marker marker--dealer spread__button">D</span>
+        </div>
         <div className="lobby__row">
           <label className="field">
             <span className="field__label">Your name</span>
@@ -67,6 +74,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
           <span className="lobby__hint">You get an invite link on the next screen.</span>
         </div>
       </form>
+      </div>
     </main>
   );
 }

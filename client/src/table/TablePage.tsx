@@ -182,6 +182,9 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   };
 
   const tourney = view.settings.rules.levelMinutes > 0;
+  const host = view.players.find((p) => p.isHost) ?? null;
+  const openSeat = Array.from({ length: maxSeats }, (_, i) => i + 1).find((s) => !bySeat.has(s)) ?? null;
+  const guest = canSit && !view.you.isHost;
 
   return (
     <div className={`app ${drawer ? 'has-drawer' : ''}`} onPointerDown={unlockAudio}>
@@ -263,7 +266,25 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
               </>
             ) : (
               <div className="felt__waiting">
-                {view.status === 'waiting' ? (
+                {view.status === 'waiting' && guest ? (
+                  <div className="invite">
+                    <h2 className="invite__title">{view.settings.name}</h2>
+                    <p className="invite__by">
+                      {host ? <>Hosted by <b>{host.name}</b> · </> : null}{seatedCount} of {maxSeats} seats taken
+                    </p>
+                    <dl className="invite__terms">
+                      <div><dt>Blinds</dt><dd>{formatChips(view.clock.level.sb)}/{formatChips(view.clock.level.bb)}</dd></div>
+                      <div><dt>{tourney ? 'Starting stack' : 'Buy-in'}</dt><dd>{formatChips(view.settings.rules.startingStack)}</dd></div>
+                      {tourney && <div><dt>Levels</dt><dd>{view.settings.rules.levelMinutes} min</dd></div>}
+                    </dl>
+                    <div className="felt__actions">
+                      <button className="btn btn--act btn--lg invite__cta" disabled={openSeat == null} onClick={() => openSeat != null && setSitAt(openSeat)}>
+                        {openSeat == null ? 'Table is full' : 'Take a seat'}
+                      </button>
+                    </div>
+                    <p className="felt__hint">{openSeat == null ? 'Stay and watch; a chair may open up.' : 'Or tap any open chair around the table.'}</p>
+                  </div>
+                ) : view.status === 'waiting' ? (
                   <>
                     <h2 className="felt__title">{seatedCount < 2 ? 'Waiting for players' : 'Ready when you are'}</h2>
                     <p className="felt__text">
@@ -358,29 +379,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
         {sitAt != null && (
           <div className="sheet-wrap" onClick={(e) => { if (e.target === e.currentTarget) setSitAt(null); }}>
-            <form className="sheet" onSubmit={sit}>
-              <h2 className="sheet__title">Seat {sitAt}</h2>
-              <label className="field">
-                <span className="field__label">Name at the table</span>
-                <input name="name" defaultValue={me?.name ?? prefs.get('name')} maxLength={18} required autoFocus autoComplete="nickname" />
-              </label>
-              <label className="field">
-                <span className="field__label">Buy-in</span>
-                {tourney ? (
-                  <>
-                    <input name="buyIn" value={formatChips(view.settings.rules.startingStack)} readOnly />
-                    <span className="field__hint">Tournament rules: everyone starts with the same stack.</span>
-                  </>
-                ) : (
-                  <input name="buyIn" inputMode="numeric" defaultValue={view.settings.rules.startingStack} required />
-                )}
-              </label>
-              {view.settings.requireApproval && !view.you.isHost && <p className="field__hint">The host approves your seat before you are dealt in.</p>}
-              <div className="sheet__actions">
-                <button type="button" className="btn btn--quiet" onClick={() => setSitAt(null)}>Cancel</button>
-                <button className="btn btn--act" disabled={busy}>{view.settings.requireApproval && !view.you.isHost ? 'Ask to sit' : 'Sit down'}</button>
-              </div>
-            </form>
+            <SitSheet
+              seat={sitAt}
+              tableName={view.settings.name}
+              defaultName={me?.name ?? prefs.get('name')}
+              stack={view.settings.rules.startingStack}
+              fixed={tourney}
+              ask={view.settings.requireApproval && !view.you.isHost}
+              busy={busy}
+              onSubmit={sit}
+              onCancel={() => setSitAt(null)}
+            />
           </div>
         )}
 
@@ -423,5 +432,43 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
       {drawer && <Drawer view={view} tab={tab} setTab={setTab} run={run} onClose={() => setDrawer(false)} />}
     </div>
+  );
+}
+
+function SitSheet({ seat, tableName, defaultName, stack, fixed, ask, busy, onSubmit, onCancel }: {
+  seat: number; tableName: string; defaultName: string; stack: number; fixed: boolean; ask: boolean; busy: boolean;
+  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void; onCancel: () => void;
+}) {
+  const [buyIn, setBuyIn] = useState(String(stack));
+  const amount = fixed ? stack : Number(buyIn.replace(/\D/g, '')) || 0;
+  return (
+    <form className="sheet sheet--felt sitdown" onSubmit={onSubmit}>
+      <div className="sitdown__head">
+        <h2 className="sheet__title">Seat {seat}</h2>
+        <span className="sitdown__table">{tableName}</span>
+      </div>
+      <div className="sitdown__stack" aria-live="polite">
+        <span className="sitdown__chips">{amount > 0 && <ChipStack amount={amount} label={false} size="lg" spread />}</span>
+        <span className="sitdown__amount">{formatChips(amount)}</span>
+        <span className="sitdown__unit">{fixed ? 'chips, the same for everyone' : 'chips to start with'}</span>
+      </div>
+      <label className="field">
+        <span className="field__label">Name at the table</span>
+        <input name="name" defaultValue={defaultName} maxLength={18} required autoFocus autoComplete="nickname" />
+      </label>
+      {fixed ? (
+        <input type="hidden" name="buyIn" value={stack} />
+      ) : (
+        <label className="field">
+          <span className="field__label">Buy-in</span>
+          <input name="buyIn" inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} required />
+        </label>
+      )}
+      {ask && <p className="field__hint">The host approves your seat before you are dealt in.</p>}
+      <div className="sheet__actions">
+        <button type="button" className="btn btn--quiet" onClick={onCancel}>Cancel</button>
+        <button className="btn btn--act" disabled={busy || amount <= 0}>{ask ? 'Ask to sit' : 'Sit down'}</button>
+      </div>
+    </form>
   );
 }
