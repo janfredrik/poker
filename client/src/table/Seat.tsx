@@ -1,28 +1,45 @@
-import { useEffect, useRef } from 'react';
-import { MicOff, WifiOff, Crown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { MicOff, WifiOff, Crown, Volume2 } from 'lucide-react';
 import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
 
-export function VideoFeed({ stream, muted, mirror }: { stream: MediaStream | null; muted?: boolean; mirror?: boolean }) {
+function VideoFeed({ stream, mirror }: { stream: MediaStream; mirror: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
-    if (v.srcObject !== stream) v.srcObject = stream;
-    if (stream) void v.play().catch(() => {});
+    v.muted = true;
+    v.srcObject = stream;
+    return () => { v.srcObject = null; };
   }, [stream]);
-  return <video ref={ref} className={`feed ${mirror ? 'feed--mirror' : ''}`} autoPlay playsInline muted={muted} />;
+  return <video ref={ref} className={`feed ${mirror ? 'feed--mirror' : ''}`} autoPlay playsInline muted />;
 }
 
-/** Plays a remote participant's audio even when their camera is off. */
-export function AudioOnly({ stream }: { stream: MediaStream }) {
+function RemoteAudio({ stream, name }: { stream: MediaStream; name: string }) {
   const ref = useRef<HTMLAudioElement>(null);
+  const [blocked, setBlocked] = useState(false);
+  function play(a: HTMLAudioElement) {
+    void a.play().catch((error: DOMException) => {
+      if (a.srcObject === stream && error.name === 'NotAllowedError') setBlocked(true);
+    });
+  }
   useEffect(() => {
     const a = ref.current;
-    if (a && a.srcObject !== stream) { a.srcObject = stream; void a.play().catch(() => {}); }
+    if (!a) return;
+    a.srcObject = stream;
+    setBlocked(false);
+    play(a);
+    return () => { a.srcObject = null; };
   }, [stream]);
-  return <audio ref={ref} autoPlay />;
+  return <>
+    <audio ref={ref} onPlaying={() => setBlocked(false)} />
+    {blocked && (
+      <button className="seat__enable-audio" aria-label={`Enable sound for ${name}`} onClick={() => ref.current && play(ref.current)}>
+        <Volume2 size={14} aria-hidden="true" /> Enable sound
+      </button>
+    )}
+  </>;
 }
 
 export function ordinal(n: number) {
@@ -71,7 +88,7 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
     );
   }
 
-  const showVideo = !!stream && (isYou ? player.camOn : player.camOn) && stream.getVideoTracks().length > 0;
+  const showVideo = player.camOn && stream && stream.getVideoTracks().some((track) => track.readyState === 'live');
   const cards = player.shownCards ?? (player.hasCards ? [null, null] : []);
   const out = player.status === 'seated' && player.stack === 0 && !player.inHand;
   const state = player.place != null && player.stack === 0 ? `Out · ${ordinal(player.place)}`
@@ -98,17 +115,17 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
     >
       <button className="seat__frame" onClick={() => onOpen?.(player)} aria-label={`${player.name}, ${formatChips(player.stack)} chips`}>
         {showVideo ? (
-          <VideoFeed stream={stream} muted={isYou} mirror={isYou} />
+          <VideoFeed stream={stream} mirror={isYou} />
         ) : (
           <span className="seat__avatar" aria-hidden="true">{initials(player.name)}</span>
         )}
-        {!isYou && stream && !showVideo && <AudioOnly stream={stream} />}
         <span className="seat__badges">
           {player.isHost && <span className="badge" title="Host"><Crown size={12} strokeWidth={2.4} /></span>}
           {!player.connected && <span className="badge" title="Disconnected"><WifiOff size={12} strokeWidth={2.4} /></span>}
           {player.connected && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
         </span>
       </button>
+      {!isYou && stream && stream.getAudioTracks().length > 0 && <RemoteAudio stream={stream} name={player.name} />}
       {isYou && !!holeCards?.length && (
         // covers the picture; the cards straddle its right edge, half on the picture and half beside it
         <div className="seat__mine-anchor">

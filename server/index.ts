@@ -135,13 +135,15 @@ function sanitizeSettings(input: Partial<TableSettings> & { rules?: Partial<Rule
   };
 }
 
-const rate = new Map<string, number[]>();
-function limited(s: S, max = 30, windowMs = 5000) {
-  const now = Date.now();
-  const arr = (rate.get(s.id) ?? []).filter((t) => now - t < windowMs);
-  arr.push(now);
-  rate.set(s.id, arr);
-  return arr.length > max;
+function packetBudget(max: number) {
+  let recent: number[] = [];
+  return () => {
+    const now = Date.now();
+    recent = recent.filter((t) => now - t < 5000);
+    if (recent.length >= max) return false;
+    recent.push(now);
+    return true;
+  };
 }
 
 io.on('connection', (raw) => {
@@ -165,7 +167,12 @@ io.on('connection', (raw) => {
     if (p && old?.id !== p.id) { p.connections++; t.connectionChanged(p); }
   };
 
-  s.use((_packet, next) => { if (limited(s)) return; next(); });
+  const allowGamePacket = packetBudget(30);
+  // Offers, answers and trickled ICE candidates arrive in bursts for every peer at the table.
+  const allowSignal = packetBudget(512);
+  s.use(([event], next) => {
+    if (event === 'rtc:signal' ? allowSignal() : allowGamePacket()) next();
+  });
 
   s.on('table:create', (input: { settings: Partial<TableSettings>; hostName: string }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
     if (tables.size > 500) throw new GameError('This server has too many tables open.');
@@ -286,7 +293,6 @@ io.on('connection', (raw) => {
   });
 
   s.on('disconnect', () => {
-    rate.delete(s.id);
     const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
     if (!t) return;
     const p = t.player(s.data.playerId);

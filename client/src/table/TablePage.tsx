@@ -91,7 +91,10 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
       await mesh.stopAll();
       socket.disconnect();
     };
-    const onState = (v: TableView) => setView(v);
+    const onState = (v: TableView) => {
+      mesh.setIdentity(v.you.playerId);
+      setView(v);
+    };
     const onClosed = () => setFatal('The host closed this table.');
     const onConnect = () => { setConnected(true); join(); };
     const onDisconnect = () => setConnected(false);
@@ -109,8 +112,6 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
       socket.off('handoff:done', onHandoff);
     };
   }, [tableId]);
-
-  useEffect(() => { mesh.setIdentity(view?.you.playerId ?? null); }, [view?.you.playerId]);
 
   const run = useCallback(async (event: string, payload?: unknown) => {
     unlockAudio();

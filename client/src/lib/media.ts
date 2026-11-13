@@ -39,7 +39,7 @@ class MediaMesh {
   private peers = new Map<string, Peer>();
   private iceServers: RTCIceServer[] | null = null;
   private iceRefreshAt = 0;
-  /** Last peer list from the server, replayed once we know who we are. */
+  /** Identifies the current roster while an ICE config request is in flight. */
   private lastPeers: RtcPeer[] = [];
   /** Signals from peers whose connection we have not opened yet. */
   private pending = new Map<string, SignalData[]>();
@@ -55,6 +55,9 @@ class MediaMesh {
     socket.on('rtc:peers', (peers: RtcPeer[]) => void this.setPeers(peers));
     socket.on('rtc:signal', (m: { from: string; data: SignalData }) => this.onSignal(m.from, m.data));
     socket.on('disconnect', () => {
+      // The server clears media flags when our last socket leaves. The next
+      // joined state must announce any tracks we kept across the disconnect.
+      this.myPlayerId = null;
       for (const id of [...this.peers.keys()]) this.closePeer(id);
       this.pending.clear();
       this.lastPeers = [];
@@ -106,16 +109,21 @@ class MediaMesh {
       : new Map<string, RtcPeer>();
     for (const id of [...this.peers.keys()]) if (!wanted.has(id)) this.closePeer(id);
     for (const id of [...this.pending.keys()]) if (!wanted.has(id)) this.pending.delete(id);
+    const missing = [...wanted.values()].filter((p) => !this.peers.has(p.socketId));
     for (const p of wanted.values()) {
-      if (!this.peers.has(p.socketId)) await this.openPeer(p);
-      else this.peers.get(p.socketId)!.playerId = p.playerId;
+      const peer = this.peers.get(p.socketId);
+      if (peer) peer.playerId = p.playerId;
     }
     this.emit({ spectators });
+    if (missing.length) {
+      const iceServers = await this.config();
+      if (this.lastPeers !== list) return;
+      for (const p of missing) this.openPeer(p, iceServers);
+    }
   }
 
-  private async openPeer(info: RtcPeer) {
-    const pc = new RTCPeerConnection({ iceServers: await this.config() });
-    if (this.peers.has(info.socketId)) { pc.close(); return; }
+  private openPeer(info: RtcPeer, iceServers: RTCIceServer[]) {
+    const pc = new RTCPeerConnection({ iceServers });
     const peer: Peer = {
       socketId: info.socketId, playerId: info.playerId, pc, polite: (socket.id ?? '') < info.socketId,
       makingOffer: false, ignoreOffer: false, senders: {}, remote: new MediaStream(), chain: Promise.resolve(),
