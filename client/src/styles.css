@@ -182,8 +182,8 @@ input, textarea { caret-color: var(--lamp); }
 .field--inline { grid-template-columns: auto 1fr; align-items: center; gap: 10px; }
 .form-error { margin: 0; color: var(--bad); font-weight: 600; }
 
-.toggle { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--bone-2); cursor: pointer; user-select: none; }
-.toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.toggle { position: relative; display: inline-flex; align-items: center; gap: 10px; font-size: 14px; color: var(--bone-2); cursor: pointer; user-select: none; }
+.toggle input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; pointer-events: none; }
 .toggle__track { width: 36px; height: 21px; border-radius: 999px; background: rgba(239, 231, 214, 0.14); position: relative; flex: none; transition: background-color 180ms; }
 .toggle__track::after { content: ''; position: absolute; top: 3px; left: 3px; width: 15px; height: 15px; border-radius: 50%; background: var(--bone-2); transition: transform 220ms var(--ease-out), background-color 180ms; }
 .toggle input:checked + .toggle__track { background: var(--lamp); }
