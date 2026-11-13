@@ -326,6 +326,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 pending={p?.status === 'pending'}
                 onOpen={() => { if (view.you.isHost) { setDrawer(true); setTab('players'); } }}
                 face={pos.y > 70 ? 'up' : pos.y < 25 ? 'down' : pos.x < 50 ? 'right' : 'left'}
+                holeCards={isYou ? view.you.holeCards : undefined}
               />
             </div>
           );

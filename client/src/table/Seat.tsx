@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { MicOff, WifiOff, Crown } from 'lucide-react';
-import type { PublicPlayer, WinnerView } from '../../../shared/types';
+import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
 
@@ -51,9 +51,11 @@ interface SeatProps {
   pending?: boolean;
   face?: 'up' | 'down' | 'left' | 'right';
   usingBank?: boolean;
+  /** Your own hole cards, shown face up on your seat. Only ever passed for your own seat. */
+  holeCards?: Card[];
 }
 
-export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank }: SeatProps) {
+export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank, holeCards }: SeatProps) {
   if (!player) {
     return (
       <div className="seat seat--empty">
@@ -107,6 +109,16 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
           {player.connected && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
         </span>
       </button>
+      {isYou && !!holeCards?.length && (
+        // covers the picture; the cards straddle its right edge, half on the picture and half beside it
+        <div className="seat__mine-anchor">
+          <span className="seat__mine">
+            {holeCards.map((c, i) => (
+              <PlayingCard key={c + i} card={c} size="sm" dim={player.folded} highlight={!!winner?.cards.includes(c)} />
+            ))}
+          </span>
+        </div>
+      )}
       {cards.length > 0 && !isYou && (
         <span className={`seat__cards ${player.shownCards ? 'is-shown' : ''}`}>
           {cards.map((c, i) => (
