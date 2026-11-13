@@ -1,9 +1,9 @@
-# Home Game: poker server + TURN relay for video.
+# Poker: game server + TURN relay for video.
 # Copy .env.example to .env and fill it in before `docker compose up -d`.
 services:
   poker:
     image: ${POKER_IMAGE:-ghcr.io/janfredrik/poker:latest}   # built by GitHub Actions
-    container_name: homegame-poker
+    container_name: poker
     restart: unless-stopped
     user: "${PUID:-1000}:${PGID:-1000}"   # Unraid: 99:100
     ports:
@@ -19,7 +19,7 @@ services:
 
   coturn:
     image: coturn/coturn:4.6
-    container_name: homegame-coturn
+    container_name: poker-coturn
     restart: unless-stopped
     network_mode: host                      # TURN needs a wide UDP range; host networking is simplest on Unraid
     command:

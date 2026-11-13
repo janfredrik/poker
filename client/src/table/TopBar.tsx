@@ -36,7 +36,7 @@ export function TopBar(p: Props) {
   return (
     <header className="topbar">
       <div className="topbar__id">
-        <a className="wordmark wordmark--sm" href="/">Home Game</a>
+        <a className="wordmark wordmark--sm" href="/">Poker</a>
         <span className="topbar__table">{view.settings.name}</span>
       </div>
 

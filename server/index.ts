@@ -117,7 +117,7 @@ function guard<T>(ack: Ack<T> | undefined, fn: () => T | void) {
 
 function sanitizeSettings(input: Partial<TableSettings> & { rules?: Partial<RuleSet> }, prev?: TableSettings): TableSettings {
   return {
-    name: String(input?.name ?? prev?.name ?? 'Home game').trim().slice(0, 40) || 'Home game',
+    name: String(input?.name ?? prev?.name ?? 'Poker').trim().slice(0, 40) || 'Poker',
     maxSeats: 9,
     requireApproval: input?.requireApproval ?? prev?.requireApproval ?? false,
     rules: sanitizeRules(input?.rules, prev?.rules ?? BUILT_IN_RULESETS[0]),

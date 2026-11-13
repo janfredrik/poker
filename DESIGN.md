@@ -1,5 +1,5 @@
 ---
-name: Home Game
+name: Poker
 description: A friend's kitchen table at 22:00 — walnut room, teal fold-out felt, clay chips, one lamp on whoever must act.
 colors:
   walnut-950: "#160f0b"
@@ -155,7 +155,7 @@ components:
     padding: "12px 16px"
 ---
 
-# Design System: Home Game
+# Design System: Poker
 
 <!-- FORM: Kitchen Table Home Game · seed key a13589ed -->
 

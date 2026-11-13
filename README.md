@@ -1,4 +1,4 @@
-# Home Game
+# Poker
 
 Self-hosted No-Limit Texas Hold'em for home games with friends, with built-in video and audio. One Docker image, runs behind your own nginx.
 
@@ -39,12 +39,12 @@ Open http://localhost:5173. Camera and microphone work on `localhost` without HT
    ```bash
    cp .env.example .env
    ```
-   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`). Fill in `PUBLIC_HOST`, `TURN_HOST`, `PUBLIC_IP`, a random `TURN_SECRET` (`openssl rand -hex 32`) and `DATA_PATH` (e.g. `/mnt/user/appdata/homegame`). On Unraid keep `PUID=99` and `PGID=100`.
+   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`). Fill in `PUBLIC_HOST`, `TURN_HOST`, `PUBLIC_IP`, a random `TURN_SECRET` (`openssl rand -hex 32`) and `DATA_PATH` (e.g. `/mnt/user/appdata/poker`). On Unraid keep `PUID=99` and `PGID=100`.
 2. Pull and start (the image is built by GitHub Actions on every push to `main`):
    ```bash
    docker compose pull && docker compose up -d
    ```
-   If the GHCR package is private, run `docker login ghcr.io` first with a GitHub token that has `read:packages`, or make the package public under the repo's Packages settings. To build locally instead: `docker build -t homegame-poker . ` and set `POKER_IMAGE=homegame-poker`.
+   If the GHCR package is private, run `docker login ghcr.io` first with a GitHub token that has `read:packages`, or make the package public under the repo's Packages settings. To build locally instead: `docker build -t poker . ` and set `POKER_IMAGE=poker`.
 3. Add the nginx site in [deploy/nginx-poker.conf](deploy/nginx-poker.conf): set your hostname, certificate paths and the Unraid IP/port in `proxy_pass`. It forwards the WebSocket upgrade that the game needs. **HTTPS is required** for camera and microphone.
 4. Forward these ports on your router to the Unraid box:
 

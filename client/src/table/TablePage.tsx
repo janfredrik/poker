@@ -101,7 +101,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   useEffect(() => {
     if (myTurn && !prevTurn.current) yourTurnSound();
     prevTurn.current = myTurn;
-    const base = view ? `${view.settings.name} · Home Game` : 'Home Game';
+    const base = view && view.settings.name !== 'Poker' ? `${view.settings.name} · Poker` : 'Poker';
     document.title = myTurn ? `Your turn · ${base}` : base;
   }, [myTurn, view?.settings.name]);
 

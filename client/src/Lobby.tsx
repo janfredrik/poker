@@ -34,7 +34,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   return (
     <main className="lobby">
       <div className="lobby__lamp" aria-hidden="true" />
-      <a className="wordmark lobby__mast" href="/">Home Game</a>
+      <a className="wordmark lobby__mast" href="/">Poker</a>
       <header className="lobby__head">
         <h1 className="lobby__title">Deal a table for tonight</h1>
         <p className="lobby__lede">No-limit Texas Hold'em on your own server. Set the rules, share the link, and see everyone's face at the table.</p>
