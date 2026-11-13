@@ -260,6 +260,14 @@ class MediaMesh {
 
   clearError() { this.emit({ error: null }); }
 
+  /** Turn camera and mic fully off and wait until the server knows. */
+  async stopAll() {
+    this.release('video');
+    this.release('audio');
+    this.emit();
+    await call('player:media', { camOn: false, micOn: false }).catch(() => {});
+  }
+
   /** Called when we learn (or lose) our player identity at this table. */
   setIdentity(playerId: string | null) {
     if (this.myPlayerId === playerId) return;

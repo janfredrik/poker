@@ -1,4 +1,4 @@
-import { Camera, CameraOff, Eye, Link2, Mic, MicOff, Pause, Play, PanelRight } from 'lucide-react';
+import { Camera, CameraOff, Eye, Link2, Mic, MicOff, Pause, Play, PanelRight, Smartphone } from 'lucide-react';
 import type { TableView } from '../../../shared/types';
 import { formatChips, formatClock } from '../../../shared/presets';
 import { useNow } from '../lib/media';
@@ -9,6 +9,9 @@ interface Props {
   micOn: boolean;
   mediaBusy: boolean;
   canMedia: boolean;
+  /** The camera runs on another screen (this is the phone after a handoff). */
+  hideMedia?: boolean;
+  onPhone?: () => void;
   onCam: () => void;
   onMic: () => void;
   onCopy: () => void;
@@ -82,6 +85,12 @@ export function TopBar(p: Props) {
           <Link2 size={15} /> {p.copied ? 'Link copied' : 'Invite'}
         </button>
         <span className="topbar__sep" aria-hidden="true" />
+        {p.onPhone && (
+          <button className="iconbtn" onClick={p.onPhone} title="Continue on your phone">
+            <Smartphone size={18} />
+          </button>
+        )}
+        {!p.hideMedia && <>
         <button
           className={`iconbtn ${p.camOn ? 'is-on' : ''}`}
           onClick={p.onCam}
@@ -100,6 +109,7 @@ export function TopBar(p: Props) {
         >
           {p.micOn ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
+        </>}
         <button className={`iconbtn ${p.drawerOpen ? 'is-on' : ''}`} onClick={p.onDrawer} aria-pressed={p.drawerOpen} title="Log, chat, ledger and settings">
           <PanelRight size={18} />
           {(p.unread > 0 || (isHost && pendingCount > 0)) && !p.drawerOpen && <span className="dot" aria-label="New activity" />}

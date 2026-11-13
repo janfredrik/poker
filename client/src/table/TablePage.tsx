@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link2, Play } from 'lucide-react';
+import { Link2, Play, Smartphone } from 'lucide-react';
 import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { call, prefs, socket, tokens } from '../lib/socket';
@@ -9,6 +9,7 @@ import { PlayingCard } from './Card';
 import { ChipStack, setChipScale } from './Chips';
 import { Dock } from './Dock';
 import { Drawer, type DrawerTab } from './Drawer';
+import { PhoneSheet } from './PhoneSheet';
 import { Seat } from './Seat';
 import { TopBar } from './TopBar';
 
@@ -25,6 +26,11 @@ const TALL: Pt[] = [
 ];
 const CENTER: Pt = { x: 50, y: 48 };
 const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+
+// A QR handoff link carries a one-time code in the fragment (never sent to the server as a URL).
+// Read once at load so it survives StrictMode's double effects, and drop it from the address bar.
+let pendingHandoff: string | null = new URLSearchParams(location.hash.slice(1)).get('handoff');
+if (pendingHandoff) history.replaceState(null, '', location.pathname + location.search);
 
 function useTall() {
   const q = '(max-aspect-ratio: 4/5)';
@@ -50,6 +56,11 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const [copied, setCopied] = useState(false);
   const [seenLog, setSeenLog] = useState(0);
   const [connected, setConnected] = useState(socket.connected);
+  const [phoneOpen, setPhoneOpen] = useState(false);
+  /** 'moved': this screen handed everything to a phone. 'camera': a phone plays, this screen keeps the camera. */
+  const [handedOff, setHandedOff] = useState<'moved' | 'camera' | null>(null);
+  /** On the phone after a handoff: 'remote' = the camera stays on the other screen, 'ask' = offer to turn it on here. */
+  const [arrived, setArrived] = useState<'remote' | 'ask' | null>(() => (sessionStorage.getItem(`homegame:remoteCam:${tableId}`) ? 'remote' : null));
   const media = useMedia();
   const tall = useTall();
   const now = useNow(!!view?.hand?.turnEndsAt, 100);
@@ -57,7 +68,28 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   /* ---- connection ---- */
   useEffect(() => {
     const join = () => {
-      call('table:join', { tableId, token: tokens.get(tableId) }).catch((e: Error) => setFatal(e.message));
+      const code = pendingHandoff;
+      pendingHandoff = null;
+      call<{ token: string; keepCam: boolean } | undefined>('table:join', { tableId, token: tokens.get(tableId), handoff: code ?? undefined })
+        .then((res) => {
+          if (!res) return;
+          tokens.set(tableId, res.token);
+          try {
+            if (res.keepCam) sessionStorage.setItem(`homegame:remoteCam:${tableId}`, '1');
+            else sessionStorage.removeItem(`homegame:remoteCam:${tableId}`);
+          } catch { /* private mode */ }
+          setArrived(res.keepCam ? 'remote' : 'ask');
+        })
+        .catch((e: Error) => setFatal(e.message));
+    };
+    const onHandoff = async ({ keepCam }: { keepCam: boolean }) => {
+      setPhoneOpen(false);
+      setArrived(null);
+      try { sessionStorage.removeItem(`homegame:remoteCam:${tableId}`); } catch { /* private mode */ }
+      if (keepCam) { setHandedOff('camera'); return; }
+      setHandedOff('moved');
+      await mesh.stopAll();
+      socket.disconnect();
     };
     const onState = (v: TableView) => setView(v);
     const onClosed = () => setFatal('The host closed this table.');
@@ -67,12 +99,14 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     socket.on('table:closed', onClosed);
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
+    socket.on('handoff:done', onHandoff);
     if (socket.connected) join();
     return () => {
       socket.off('state', onState);
       socket.off('table:closed', onClosed);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
+      socket.off('handoff:done', onHandoff);
     };
   }, [tableId]);
 
@@ -144,6 +178,16 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
       </main>
     );
   }
+  if (handedOff === 'moved') {
+    return (
+      <main className="gone">
+        <Smartphone size={40} aria-hidden="true" />
+        <h1>You are playing on your phone now</h1>
+        <p className="gone__wait">Camera and mic moved with you. This screen is off the table.</p>
+        <button className="btn btn--quiet" onClick={() => { setHandedOff(null); socket.connect(); }}>Continue on this screen instead</button>
+      </main>
+    );
+  }
   if (!view) return <main className="gone"><p className="gone__wait">Pulling up a chair…</p></main>;
 
   const hand = view.hand;
@@ -194,6 +238,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         micOn={media.micOn}
         mediaBusy={media.busy}
         canMedia={!!me}
+        hideMedia={arrived === 'remote'}
+        onPhone={me && view.you.playerId ? () => setPhoneOpen(true) : undefined}
         onCam={() => void mesh.setCam(!media.camOn)}
         onMic={() => void mesh.setMic(!media.micOn)}
         onCopy={copyLink}
@@ -329,7 +375,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           const p = bySeat.get(seatNo) ?? null;
           const pos = posOf(seatNo);
           const isYou = !!p && p.id === view.you.playerId;
-          const stream = p ? (isYou ? media.local : media.streams[p.id] ?? null) : null;
+          // On a phone whose camera stayed on the other screen, show that screen's feed on your own seat.
+          const stream = p ? (isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null) : null;
           // occupied seats are keyed by player so a seat shuffle animates faces across the table
           return (
             <div className={`seat-anchor ${p ? 'is-taken' : ''}`} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
@@ -414,6 +461,32 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 <button className="btn btn--act" disabled={busy}>Add chips</button>
               </div>
             </form>
+          </div>
+        )}
+
+        {phoneOpen && (
+          <div className="sheet-wrap" onClick={(e) => { if (e.target === e.currentTarget) setPhoneOpen(false); }}>
+            <PhoneSheet tableId={view.id} camOn={media.camOn} onClose={() => setPhoneOpen(false)} />
+          </div>
+        )}
+
+        {arrived === 'ask' && (
+          <div className="sheet-wrap">
+            <div className="sheet">
+              <h2 className="sheet__title">You are in, {me?.name ?? 'welcome back'}</h2>
+              <p className="field__hint">Your seat moved to this phone. Turn on the camera and mic here so the table can see and hear you.</p>
+              <div className="sheet__actions">
+                <button className="btn btn--quiet" onClick={() => setArrived(null)}>Not now</button>
+                <button className="btn btn--act" onClick={async () => { setArrived(null); unlockAudio(); await mesh.setCam(true); await mesh.setMic(true); }}>Turn on camera</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {handedOff === 'camera' && (
+          <div className="banner banner--action" role="status">
+            <Smartphone size={15} aria-hidden="true" /> Playing on your phone. This screen keeps your camera on.
+            <button className="btn btn--quiet btn--sm" onClick={() => setHandedOff(null)}>OK</button>
           </div>
         )}
 

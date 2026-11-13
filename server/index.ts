@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -19,6 +19,11 @@ const CLIENT_DIR = [join(here, 'client'), join(here, '..', 'dist', 'client')].fi
 const tables = new Map<string, Table>();
 for (const t of loadTables()) register(t);
 console.log(`[poker] restored ${tables.size} table(s)`);
+
+/** One-time codes for moving a seat to another device (QR handoff). */
+interface Handoff { tableId: string; playerId: string; keepCam: boolean; expires: number }
+const handoffs = new Map<string, Handoff>();
+const HANDOFF_MS = 5 * 60 * 1000;
 
 function register(t: Table) {
   tables.set(t.id, t);
@@ -167,16 +172,44 @@ io.on('connection', (raw) => {
     return { tableId: t.id, token: host.token };
   }));
 
-  s.on('table:join', (input: { tableId: string; token?: string }, ack: Ack) => guard(ack, () => {
+  s.on('table:join', (input: { tableId: string; token?: string; handoff?: string }, ack: Ack<{ token: string; keepCam: boolean } | undefined>) => guard(ack, () => {
     const t = tables.get(String(input?.tableId ?? ''));
     if (!t) throw new GameError('No table with that link. It may have been closed.');
+    let handed: { token: string; keepCam: boolean } | undefined;
+    let playerId = t.byToken(input?.token)?.id;
+    if (input?.handoff) {
+      const h = handoffs.get(String(input.handoff));
+      handoffs.delete(String(input.handoff));
+      const p = h && h.tableId === t.id && h.expires > Date.now() ? t.player(h.playerId) : undefined;
+      if (!p) throw new GameError('That QR code has expired. Make a new one on the other screen.');
+      playerId = p.id;
+      handed = { token: p.token, keepCam: h!.keepCam };
+    }
     if (s.data.tableId && s.data.tableId !== t.id) s.leave(s.data.tableId);
     s.data.tableId = t.id;
     s.join(t.id);
-    attach(t, t.byToken(input?.token)?.id);
+    attach(t, playerId);
     s.emit('state', t.view(s.data.playerId ?? null));
     t.onChange();
     sendPeers(t);
+    if (handed) {
+      // Tell the player's other screens that this device has taken over.
+      for (const sid of io.sockets.adapter.rooms.get(t.id) ?? []) {
+        const o = io.sockets.sockets.get(sid) as S | undefined;
+        if (o && o.id !== s.id && o.data.playerId === playerId) o.emit('handoff:done', { keepCam: handed.keepCam });
+      }
+    }
+    return handed;
+  }));
+
+  s.on('handoff:create', (input: { keepCam?: boolean }, ack: Ack<{ code: string; expiresInMs: number }>) => guard(ack, () => {
+    const { t, p } = me();
+    const now = Date.now();
+    for (const [k, h] of handoffs) if (h.expires <= now || (h.tableId === t.id && h.playerId === p.id)) handoffs.delete(k);
+    if (handoffs.size > 2000) throw new GameError('Too many pending QR codes. Try again in a minute.');
+    const code = randomBytes(16).toString('base64url');
+    handoffs.set(code, { tableId: t.id, playerId: p.id, keepCam: !!input?.keepCam, expires: now + HANDOFF_MS });
+    return { code, expiresInMs: HANDOFF_MS };
   }));
 
   s.on('seat:request', (input: { seat: number; name: string; buyIn: number }, ack: Ack<{ token: string }>) => guard(ack, () => {
