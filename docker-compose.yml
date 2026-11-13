@@ -10,8 +10,8 @@ services:
       - "${POKER_PORT:-3000}:3000"          # nginx proxies to this
     environment:
       - TZ=${TZ:-Europe/Oslo}
-      - STUN_URLS=stun:${PUBLIC_HOST}:3478
-      - TURN_URLS=turn:${PUBLIC_HOST}:3478?transport=udp,turn:${PUBLIC_HOST}:3478?transport=tcp
+      - STUN_URLS=stun:${TURN_HOST:-${PUBLIC_HOST}}:3478
+      - TURN_URLS=turn:${TURN_HOST:-${PUBLIC_HOST}}:3478?transport=udp,turn:${TURN_HOST:-${PUBLIC_HOST}}:3478?transport=tcp
       - TURN_SECRET=${TURN_SECRET}
       - TABLE_TTL_DAYS=14
     volumes:
@@ -29,7 +29,7 @@ services:
       - --fingerprint
       - --use-auth-secret
       - --static-auth-secret=${TURN_SECRET}
-      - --realm=${PUBLIC_HOST}
+      - --realm=${TURN_HOST:-${PUBLIC_HOST}}
       - --external-ip=${PUBLIC_IP}
       - --min-port=49160
       - --max-port=49200

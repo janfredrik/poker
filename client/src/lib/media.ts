@@ -19,6 +19,8 @@ interface Peer {
   ignoreOffer: boolean;
   senders: Partial<Record<Kind, RTCRtpSender>>;
   remote: MediaStream;
+  /** Signals are handled one at a time, in arrival order. */
+  chain: Promise<void>;
 }
 
 interface Snapshot {
@@ -34,6 +36,10 @@ interface Snapshot {
 class MediaMesh {
   private peers = new Map<string, Peer>();
   private iceServers: RTCIceServer[] | null = null;
+  /** Last peer list from the server, replayed once we know who we are. */
+  private lastPeers: RtcPeer[] = [];
+  /** Signals from peers whose connection we have not opened yet. */
+  private pending = new Map<string, SignalData[]>();
   private local: MediaStream | null = null;
   private listeners = new Set<() => void>();
   private snap: Snapshot = { local: null, camOn: false, micOn: false, streams: {}, speaking: {}, error: null, busy: false };
@@ -44,8 +50,13 @@ class MediaMesh {
 
   constructor() {
     socket.on('rtc:peers', (peers: RtcPeer[]) => void this.setPeers(peers));
-    socket.on('rtc:signal', (m: { from: string; data: SignalData }) => void this.onSignal(m.from, m.data));
-    socket.on('disconnect', () => { for (const id of [...this.peers.keys()]) this.closePeer(id); this.emit(); });
+    socket.on('rtc:signal', (m: { from: string; data: SignalData }) => this.onSignal(m.from, m.data));
+    socket.on('disconnect', () => {
+      for (const id of [...this.peers.keys()]) this.closePeer(id);
+      this.pending.clear();
+      this.lastPeers = [];
+      this.emit();
+    });
   }
 
   subscribe = (fn: () => void) => { this.listeners.add(fn); return () => this.listeners.delete(fn); };
@@ -79,8 +90,10 @@ class MediaMesh {
 
   private async setPeers(list: RtcPeer[]) {
     const me = socket.id;
+    this.lastPeers = list;
     const wanted = new Map(list.filter((p) => p.socketId !== me).map((p) => [p.socketId, p]));
     for (const id of [...this.peers.keys()]) if (!wanted.has(id)) this.closePeer(id);
+    for (const id of [...this.pending.keys()]) if (!wanted.has(id)) this.pending.delete(id);
     if (!this.myPlayerId) { this.emit(); return; }
     for (const p of wanted.values()) {
       if (!this.peers.has(p.socketId)) await this.openPeer(p);
@@ -94,7 +107,7 @@ class MediaMesh {
     if (this.peers.has(info.socketId)) { pc.close(); return; }
     const peer: Peer = {
       socketId: info.socketId, playerId: info.playerId, pc, polite: (socket.id ?? '') < info.socketId,
-      makingOffer: false, ignoreOffer: false, senders: {}, remote: new MediaStream(),
+      makingOffer: false, ignoreOffer: false, senders: {}, remote: new MediaStream(), chain: Promise.resolve(),
     };
     this.peers.set(info.socketId, peer);
     const send = (data: SignalData) => socket.emit('rtc:signal', { to: info.socketId, data });
@@ -123,6 +136,9 @@ class MediaMesh {
       if (pc.connectionState === 'failed') pc.restartIce();
     };
     this.attachLocal(peer);
+    const queued = this.pending.get(info.socketId);
+    this.pending.delete(info.socketId);
+    for (const data of queued ?? []) this.queueSignal(peer, data);
   }
 
   private closePeer(id: string) {
@@ -132,9 +148,22 @@ class MediaMesh {
     this.peers.delete(id);
   }
 
-  private async onSignal(from: string, data: SignalData) {
+  private onSignal(from: string, data: SignalData) {
     const peer = this.peers.get(from);
-    if (!peer) return;
+    if (peer) { this.queueSignal(peer, data); return; }
+    // An offer can arrive before we have opened this peer (we may not know our own
+    // identity yet, or still be fetching the ICE config). Keep it for openPeer.
+    const q = this.pending.get(from) ?? [];
+    if (q.length < 200) q.push(data);
+    this.pending.set(from, q);
+  }
+
+  private queueSignal(peer: Peer, data: SignalData) {
+    peer.chain = peer.chain.then(() => this.handleSignal(peer, data));
+  }
+
+  private async handleSignal(peer: Peer, data: SignalData) {
+    if (this.peers.get(peer.socketId) !== peer) return;
     const { pc } = peer;
     try {
       if (data.description) {
@@ -144,7 +173,7 @@ class MediaMesh {
         await pc.setRemoteDescription(data.description);
         if (data.description.type === 'offer') {
           await pc.setLocalDescription();
-          socket.emit('rtc:signal', { to: from, data: { description: pc.localDescription!.toJSON() } });
+          socket.emit('rtc:signal', { to: peer.socketId, data: { description: pc.localDescription!.toJSON() } });
         }
       } else if (data.candidate) {
         try { await pc.addIceCandidate(data.candidate); }
@@ -229,8 +258,11 @@ class MediaMesh {
   setIdentity(playerId: string | null) {
     if (this.myPlayerId === playerId) return;
     this.myPlayerId = playerId;
-    if (!playerId) { for (const id of [...this.peers.keys()]) this.closePeer(id); this.emit(); }
-    else if (this.snap.camOn || this.snap.micOn) this.report();
+    if (!playerId) { for (const id of [...this.peers.keys()]) this.closePeer(id); this.pending.clear(); this.emit(); return; }
+    // The server sends the peer list together with the table state, before React has
+    // told us who we are, so setPeers skipped it. Open those connections now.
+    void this.setPeers(this.lastPeers);
+    if (this.snap.camOn || this.snap.micOn) this.report();
   }
 
   /* ---- speaking meters ---- */
