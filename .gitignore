@@ -1,0 +1,10 @@
+node_modules
+dist
+data
+.env
+.impeccable/review
+.impeccable/mocks
+.DS_Store
+.claude/
+.impeccable/hook.cache.json
+.impeccable/questions

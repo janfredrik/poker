@@ -1,0 +1,122 @@
+{
+  "title": "Choose the visual world",
+  "question": "The roll assigned Kitchen Table Home Game. Keep it, take an alternate, or re-roll.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Kitchen Table Home Game",
+      "kicker": "THE ROLL",
+      "lineage": "Friday-night home games: fold-out felt on the kitchen table, a tin of clay chips, a pencil ledger",
+      "thesis": "A friend's kitchen table at 22:00, not a casino: faces around a fold-out felt, one lamp lighting whoever has to act.",
+      "palette": ["#3b2a20", "#24525b", "#f2b350", "#efe7d6", "#c8372d", "#2f5fa8", "#2f7d4a"],
+      "materials": ["walnut tabletop", "teal felt topper", "clay chips", "pencil ledger"],
+      "viewport": "Walnut ground; a rounded-square felt topper centre with board cards and the pot as a real chip pile; nine seats are live camera tiles set around it like chairs; blind clock strip at the top; your action bar docked bottom; ledger in a side drawer.",
+      "risk": "Warm brown and teal can tip into cosy pastiche if the controls are not crisp, standard and fast.",
+      "raised": [
+        {"from": "challenger-warm-consumer-app", "raise": "Lamp amber is the only saturated colour on controls, and it appears only on what you can do right now."},
+        {"from": "challenger-labanotation", "raise": "Your decision timer and the blind level are drawn as exact-length bars: length is time left, nothing decorative."},
+        {"from": "challenger-type-specimen", "raise": "Hierarchy by scale alone: the pot and the amount to call set huge, everything else small and quiet."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Poker Broadcast",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "televised poker: hole-card cams, player plates, lower-third graphics",
+      "thesis": "Your game night produced like a TV final table: every face is a camera feed with a broadcast player plate.",
+      "palette": ["#0e1a2b", "#e8e4dc", "#e0a526", "#c2362b", "#3d8bd9"],
+      "materials": ["broadcast lower thirds", "camera feeds", "graphic chip counts"],
+      "viewport": "Felt-free dark stage; seats are framed camera feeds with name/stack plates; pot and board in a central graphics package; action bar as a lower third.",
+      "risk": "The most familiar route for a poker product with video; dark broadcast navy is close to the category's night-mode default."
+    },
+    {
+      "id": "challenger-warm-consumer-app",
+      "label": "Warm Consumer App",
+      "verdict": "competitive",
+      "lineage": "friendly consumer app surfaces",
+      "thesis": "Soft cards on a warm ground, one saturated colour only where you can press.",
+      "palette": ["#f4ece1", "#ffffff", "#2a2420", "#ff5a36"],
+      "materials": ["soft radii cards", "spring press"],
+      "viewport": "Table drawn as a soft rounded card on a warm ground, seats as white player cards, big friendly action buttons.",
+      "case": "Holds clarity (your options are the only bright thing) but loses audience identification: it reads as an app, not a poker night.",
+      "risk": "Generic: could be any consumer app with cards on it."
+    },
+    {
+      "id": "challenger-labanotation",
+      "label": "Dance Score",
+      "verdict": "declined",
+      "lineage": "labanotation scores",
+      "thesis": "Action as a vertical score where length is exact duration.",
+      "palette": ["#ffffff", "#111111", "#cfcfcf"],
+      "materials": ["score paper", "shaded symbol blocks"],
+      "viewport": "Hand history as a rising score.",
+      "case": "Players do not identify with notation; the table becomes a diagram.",
+      "kept": "Time drawn as exact length: turn timer and blind level as measured bars.",
+      "risk": "Unreadable as a poker table."
+    },
+    {
+      "id": "challenger-transit",
+      "label": "Midnight Transit Map",
+      "verdict": "declined",
+      "lineage": "metro diagrams on enamel",
+      "thesis": "Seats as stations, the pot as the interchange.",
+      "palette": ["#13234a", "#f4f1ea", "#d8342c", "#2a62c9", "#f0a92e"],
+      "materials": ["enamel", "line inks"],
+      "viewport": "Action routed along coloured lines into the pot.",
+      "case": "Metaphor costs clarity and nobody at a home game thinks in lines.",
+      "kept": "The chosen line burns brightest: only the acting seat is lit.",
+      "risk": "Costume of a map on a working screen."
+    },
+    {
+      "id": "challenger-botanical",
+      "label": "Botanical Folio",
+      "verdict": "declined",
+      "lineage": "seasonal botanical plates",
+      "thesis": "Preflop to river as fixed-scale plates on one baseline.",
+      "palette": ["#f1e8d4", "#4d6b3a", "#b8322a", "#2a2a2a"],
+      "materials": ["engraved plates", "sepia rules"],
+      "viewport": "Board streets as five aligned plates.",
+      "case": "Cream-and-serif reading of a card game; weak identification.",
+      "kept": "Five board slots always drawn at fixed scale on one baseline, empty ones included.",
+      "risk": "Bookish costume."
+    },
+    {
+      "id": "challenger-doujin",
+      "label": "Convention Catalog",
+      "verdict": "declined",
+      "lineage": "doujin event catalogs",
+      "thesis": "Packed stamp-size cells marked in biro.",
+      "palette": ["#e9e4d8", "#1a1a1a", "#d2382f"],
+      "materials": ["newsprint", "biro"],
+      "viewport": "Players as tiny catalog cells.",
+      "case": "Density fights faces; loses both axes.",
+      "kept": "Hand-marked state: folded seats visibly struck, not just dimmed.",
+      "risk": "Cluttered."
+    },
+    {
+      "id": "challenger-type-specimen",
+      "label": "Type Specimen",
+      "verdict": "declined",
+      "lineage": "variable font specimens",
+      "thesis": "Numbers as giant glyphs that change weight with value.",
+      "palette": ["#f7f7f4", "#111111", "#ff3b1f"],
+      "materials": ["flat paper", "monospace readouts"],
+      "viewport": "Pot as a giant morphing numeral.",
+      "case": "Clever but cold; friends do not see a game night.",
+      "kept": "Hierarchy by scale contrast: pot and call amount huge, labels tiny.",
+      "risk": "Gimmick."
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "buildPath": {"value": "code", "toggle": false},
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "The green felt oval on a dark room, PokerNow-style, executed cleanly.",
+    "palette": ["#1e1e1e", "#2e8b57", "#ffffff", "#3fae6a"],
+    "materials": ["green felt oval", "dark grey seat boxes"],
+    "viewport": "Oval table centre, seat boxes around the rim, action buttons bottom right.",
+    "risk": "Indistinguishable from PokerNow by design."
+  },
+  "steer": true
+}
