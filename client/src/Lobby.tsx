@@ -13,6 +13,24 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  const [bots, setBots] = useState(3);
+  const [demoBusy, setDemoBusy] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+
+  const demo = async () => {
+    setDemoError(null);
+    setDemoBusy(true);
+    try {
+      const res = await call<{ tableId: string; token: string }>('demo:create', { name: name.trim() || 'You', bots });
+      if (name.trim()) prefs.set('name', name.trim());
+      tokens.set(res.tableId, res.token);
+      navigate(`/t/${res.tableId}`);
+    } catch (err) {
+      setDemoError((err as Error).message);
+      setDemoBusy(false);
+    }
+  };
+
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -75,6 +93,24 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
           <span className="lobby__hint">You get an invite link on the next screen.</span>
         </div>
       </form>
+
+      <section className="demo" aria-labelledby="demo-title">
+        <div className="demo__text">
+          <h2 className="demo__title" id="demo-title">Just want to try it?</h2>
+          <p className="demo__lede">Play a few hands against bots with pretend cameras. Nothing is saved.</p>
+        </div>
+        <div className="demo__controls">
+          <div className="demo__count" role="radiogroup" aria-label="Number of bots">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <button key={n} type="button" role="radio" aria-checked={bots === n} className={`demo__n ${bots === n ? 'is-on' : ''}`} onClick={() => setBots(n)}>{n}</button>
+            ))}
+          </div>
+          <button type="button" className="btn btn--lg demo__go" disabled={demoBusy} onClick={() => void demo()}>
+            {demoBusy ? 'Dealing…' : `Play against ${bots} bot${bots === 1 ? '' : 's'}`}
+          </button>
+        </div>
+        {demoError && <p className="form-error" role="alert">{demoError}</p>}
+      </section>
       </div>
     </main>
   );

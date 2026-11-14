@@ -340,6 +340,26 @@ for (const boardSize of [0, 3, 4, 5]) {
   t.dispose();
 }
 
+// Demo tables: bots play every hand themselves, rebuy when broke, and chips are conserved.
+{
+  const { createDemoTable, driveBots } = await import('./demo');
+  const { table: t } = createDemoTable('Jani', 4);
+  assert(t.demo && t.players.filter((p) => p.bot).length === 4, 'demo seats four bots');
+  assert(t.players.every((p) => p.status === 'seated'), 'everyone is seated');
+  // let a bot stand in for the visitor too
+  const host = t.players.find((p) => p.isHost)!;
+  host.bot = true; host.connections = 1;
+  t.onChange = () => driveBots(t);
+  t.start(host.id);
+  for (let i = 0; i < 3000 && t.handNumber < 30; i++) await sleep(1);
+  assert(t.handNumber >= 30, `bots keep dealing hands (got ${t.handNumber})`);
+  const inPlay = t.players.reduce((s, p) => s + p.stack, 0) + (t.hand && !t.hand.finished ? t.hand.players.reduce((s, x) => s + x.contrib, 0) : 0);
+  assert(inPlay === t.players.reduce((s, p) => s + p.buyIn, 0), 'demo chips conserved');
+  assert(t.view(null).players.filter((p) => p.bot).length === 5, 'view marks bots');
+  t.status = 'paused';
+  t.dispose();
+}
+
 let totalHands = 0;
 for (let i = 0; i < 400; i++) {
   const r = await run(i + 1, 2 + (i % 8), i % BUILT_IN_RULESETS.length);

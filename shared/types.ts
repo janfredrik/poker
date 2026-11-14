@@ -104,6 +104,8 @@ export interface PublicPlayer {
   /** When the player lost their connection (server clock), null while connected. */
   awaySince: number | null;
   isHost: boolean;
+  /** A server-played bot on a demo table. */
+  bot: boolean;
   camOn: boolean;
   micOn: boolean;
   rebuys: number;

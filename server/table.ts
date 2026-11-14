@@ -36,6 +36,8 @@ export interface Player {
   camOn: boolean;
   micOn: boolean;
   stats?: PlayerStats;
+  /** Played by the server (demo tables). */
+  bot?: boolean;
   /** runtime only */
   connections: number;
   /** runtime only: when the last connection dropped (or the server started), null while connected */
@@ -151,6 +153,8 @@ export class Table {
   lastDealerSeat: number | null = null;
   log: LogEntry[] = [];
   hand: Hand | null = null;
+  /** Demo table against bots: kept in memory only, never saved or counted in the season. */
+  demo = false;
 
   private timers = new Set<NodeJS.Timeout>();
   private turnTimer: NodeJS.Timeout | null = null;
@@ -1320,7 +1324,7 @@ export class Table {
         const hp = h?.players.find((x) => x.id === p.id);
         return {
           id: p.id, name: p.name, seat: p.seat, requestedSeat: p.requestedSeat, requestedBuyIn: p.requestedBuyIn,
-          stack: p.stack, status: p.status, sittingOut: p.sittingOut, connected: p.connections > 0, isHost: p.isHost,
+          stack: p.stack, status: p.status, sittingOut: p.sittingOut, connected: p.connections > 0, isHost: p.isHost, bot: !!p.bot,
           awaySince: p.connections > 0 ? null : p.awaySince ?? null,
           camOn: p.camOn, micOn: p.micOn, rebuys: p.rebuys, addOnTaken: p.addOnTaken,
           timeBankMs: h && h.usingBank && h.bankStartedAt != null && h.toAct != null && h.players[h.toAct].id === p.id

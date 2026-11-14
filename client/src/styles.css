@@ -763,6 +763,29 @@ body:has(.lobby) { overflow: auto; }
 .lobby__submit .btn--lg { min-height: 56px; padding: 0 30px; font-size: 17px; font-weight: 750; }
 .lobby__hint { color: #a9c4bf; font-size: 14px; }
 
+/* demo: play against bots without inviting anyone */
+.demo {
+  position: relative; z-index: 1;
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 14px 24px;
+  padding: 20px 24px; border-radius: 18px;
+  border: 1px solid var(--line-2); background: rgba(22, 15, 11, 0.45);
+}
+.demo__text { display: grid; gap: 4px; }
+.demo__title { margin: 0; font-size: 19px; font-weight: 750; letter-spacing: -0.01em; }
+.demo__lede { margin: 0; color: var(--muted); font-size: 15px; text-wrap: pretty; }
+.demo__controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.demo__count { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(239, 231, 214, 0.06); border: 1px solid var(--line); }
+.demo__n {
+  width: 34px; height: 34px; border-radius: 8px; border: 0; background: transparent;
+  color: var(--bone-2); font: inherit; font-weight: 650; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.demo__n:hover { background: rgba(239, 231, 214, 0.08); }
+.demo__n.is-on { background: var(--bone); color: var(--ink); }
+.demo__n:focus-visible { outline: 2px solid var(--bone); outline-offset: 2px; }
+.demo__go { background: rgba(239, 231, 214, 0.1); color: var(--bone); border-color: var(--line-2); }
+.demo__go:hover:not(:disabled) { background: rgba(239, 231, 214, 0.16); }
+.demo .form-error { grid-column: 1 / -1; margin: 0; }
+
 /* a hand tossed onto the rail: pocket aces and the button */
 .spread {
   position: absolute; z-index: 2; pointer-events: auto;
@@ -888,6 +911,8 @@ body:has(.lobby) { overflow: auto; }
   .iconbtn { width: 36px; height: 36px; }
   .wordmark--sm { font-size: 0; gap: 0; }
   .lobby__row { grid-template-columns: 1fr; }
+  .demo { grid-template-columns: 1fr; padding: 18px 16px; }
+  .demo__n { width: 30px; }
   .lobby__lede { max-width: calc(100% - 118px); font-size: 16px; }
   .spread { width: 130px; height: 110px; right: 10px; translate: 0 -64%; }
   .spread .card { --w: 62px; }

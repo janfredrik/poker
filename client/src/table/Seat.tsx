@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MicOff, WifiOff, Crown, Volume2 } from 'lucide-react';
+import { MicOff, WifiOff, Crown, Volume2, Bot } from 'lucide-react';
 import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
@@ -123,7 +123,8 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         <span className="seat__badges">
           {player.isHost && <span className="badge" title="Host"><Crown size={12} strokeWidth={2.4} /></span>}
           {!player.connected && <span className="badge" title="Disconnected"><WifiOff size={12} strokeWidth={2.4} /></span>}
-          {player.connected && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
+          {player.bot && <span className="badge" title="Bot"><Bot size={12} strokeWidth={2.4} /></span>}
+          {player.connected && !player.bot && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
         </span>
       </button>
       {player.status === 'seated' && <SeatReaction playerId={player.id} name={player.name} />}

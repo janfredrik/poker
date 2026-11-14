@@ -4,6 +4,7 @@ import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { call, prefs, socket, tokens } from '../lib/socket';
 import { mesh, useMedia, useNow } from '../lib/media';
+import { fakeCam } from '../lib/fakecam';
 import { chipSound, unlockAudio, yourTurnSound } from '../lib/sound';
 import { formatResults } from '../lib/results';
 import { PlayingCard } from './Card';
@@ -404,7 +405,9 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           const pos = posOf(seatNo);
           const isYou = !!p && p.id === view.you.playerId;
           // On a phone whose camera stayed on the other screen, show that screen's feed on your own seat.
-          const stream = p ? (isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null) : null;
+          // Demo bots get a drawn camera feed.
+          const stream = !p ? null : p.bot ? fakeCam(p.id, p.name)
+            : isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null;
           // occupied seats are keyed by player so a seat shuffle animates faces across the table
           return (
             <div className={`seat-anchor ${p ? 'is-taken' : ''}`} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>

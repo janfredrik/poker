@@ -10,6 +10,7 @@ import { isReaction, type SeatReactionEvent } from '../shared/reactions';
 import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
 import { archiveResult, deleteRuleSet, deleteTableFile, flushAll, listResults, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
+import { createDemoTable, driveBots } from './demo';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -29,8 +30,9 @@ const HANDOFF_MS = 5 * 60 * 1000;
 function register(t: Table) {
   tables.set(t.id, t);
   t.onChange = () => {
-    saveTable(t);
+    if (!t.demo) saveTable(t);
     broadcast(t);
+    driveBots(t);
   };
 }
 
@@ -193,6 +195,13 @@ io.on('connection', (raw) => {
     return { tableId: t.id, token: host.token };
   }));
 
+  s.on('demo:create', (input: { name?: string; bots?: number }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
+    if (tables.size > 500) throw new GameError('This server has too many tables open.');
+    const { table: t, hostToken } = createDemoTable(input?.name, input?.bots);
+    register(t);
+    return { tableId: t.id, token: hostToken };
+  }));
+
   s.on('table:join', (input: { tableId: string; token?: string; handoff?: string }, ack: Ack<{ token: string; keepCam: boolean } | undefined>) => guard(ack, () => {
     const t = tables.get(String(input?.tableId ?? ''));
     if (!t) throw new GameError('No table with that link. It may have been closed.');
@@ -210,6 +219,8 @@ io.on('connection', (raw) => {
     s.data.tableId = t.id;
     s.join(t.id);
     attach(t, playerId);
+    // A demo table deals as soon as its visitor arrives.
+    if (t.demo && t.status === 'waiting' && t.player(playerId)?.isHost) t.start(playerId!);
     s.emit('state', t.view(s.data.playerId ?? null));
     t.onChange();
     sendPeers(t);
@@ -295,7 +306,7 @@ io.on('connection', (raw) => {
   s.on('host:close', (_: unknown, ack: Ack) => guard(ack, () => {
     const { t, p } = me();
     if (!p.isHost) throw new GameError('Only the host can close the table.');
-    archiveResult(t);
+    if (!t.demo) archiveResult(t);
     io.to(t.id).emit('table:closed');
     t.dispose();
     tables.delete(t.id);
@@ -326,10 +337,24 @@ io.on('connection', (raw) => {
 
 /* ---------------- loops & lifecycle ---------------- */
 
-setInterval(() => { for (const t of tables.values()) t.tick(); }, 1000);
+/** Demo tables are dropped once nobody has been looking at them for this long. */
+const DEMO_EMPTY_MS = 10 * 60 * 1000;
+const demoEmptySince = new Map<string, number>();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const t of tables.values()) {
+    t.tick();
+    if (!t.demo) continue;
+    if (io.sockets.adapter.rooms.get(t.id)?.size) { demoEmptySince.delete(t.id); continue; }
+    const since = demoEmptySince.get(t.id) ?? now;
+    demoEmptySince.set(t.id, since);
+    if (now - since > DEMO_EMPTY_MS) { t.dispose(); tables.delete(t.id); demoEmptySince.delete(t.id); }
+  }
+}, 1000);
 
 const shutdown = () => {
-  flushAll(tables.values());
+  flushAll([...tables.values()].filter((t) => !t.demo));
   process.exit(0);
 };
 process.on('SIGTERM', shutdown);
