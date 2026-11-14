@@ -196,6 +196,42 @@ for (const boardSize of [0, 3, 4, 5]) {
   t.dispose();
 }
 
+// Completed hands feed the season stats. A forced blind, an uncalled raise and
+// a split showdown exercise the distinctions amounts alone cannot reconstruct.
+{
+  for (const split of [false, true]) {
+    const rules = { ...rs('cash-10-20'), turnSeconds: 0 };
+    const t = new Table({ name: 'stats', maxSeats: 2, requireApproval: false, rules });
+    const ps = ['A', 'B'].map((name, i) => t.createPlayer(name, i === 0));
+    ps.forEach((p, i) => { p.connections = 1; t.requestSeat(p, i + 1, p.name, 2000); });
+    t.start(ps[0].id);
+    while (!t.hand) await sleep(1);
+    const h = t.hand;
+    const small = t.player(h.players[h.toAct!].id)!;
+    const big = ps.find((p) => p !== small)!;
+    t.act(small.id, 'raise', 100);
+    const interrupted = Table.restore(structuredClone(t.snapshot()));
+    assert(interrupted.players.every((p) => !p.stats?.hands), 'void hand is excluded from stats');
+    interrupted.dispose();
+    if (split) {
+      // Both players play the royal flush on the board.
+      h.deck = ['Ah', '2c', 'Kh', '3c', 'Qh', 'Jh', 'Th', '4c'];
+      h.players[0].hole = ['2s', '3s'];
+      h.players[1].hole = ['2d', '3d'];
+      t.act(big.id, 'call');
+      while (!h.finished) t.act(h.players[h.toAct!].id, 'check');
+    } else {
+      t.act(big.id, 'fold');
+    }
+    deepStrictEqual(small.stats, { hands: 1, vpipHands: 1, pfrHands: 1, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 40 });
+    deepStrictEqual(big.stats, { hands: 1, vpipHands: split ? 1 : 0, pfrHands: 0, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 0 });
+    const restored = Table.restore(structuredClone(t.snapshot()));
+    deepStrictEqual(restored.players.map((p) => p.stats), ps.map((p) => p.stats));
+    restored.dispose();
+    t.dispose();
+  }
+}
+
 // payouts: buy-ins to 1st, rebuys rotate over 3 places
 {
   const { payoutAmounts } = await import('../shared/presets');
@@ -245,6 +281,19 @@ for (const boardSize of [0, 3, 4, 5]) {
   } });
   assert(split.includes(`${third.name} pays me (${winner.name}) 200 kr\n${third.name} pays ${second.name} 100 kr`), 'split payment settles both net winners');
   assert(split.split(' pays ').length === 3, 'break-even players owe nothing');
+  const { rankedResults, seasonStandings } = await import('../shared/results');
+  const rows = rankedResults(view);
+  deepStrictEqual(rows.map((p) => p.net), [900, -300, -300, -300]);
+  const night = { id: t.id, name: 'Friday', finishedAt: t.finishedAt!, year: 2026, currency: 'kr', players: rows };
+  const player = rows[0];
+  const stats = { hands: 10, vpipHands: 3, pfrHands: 2, showdownsWon: 1, biggestPot: 800 };
+  const season = seasonStandings([
+    { ...night, players: [{ ...player, stats }] },
+    { ...night, id: 'rematch', players: [{ ...player, name: player.name.toLowerCase(), place: 2, net: -300,
+      stats: { hands: 2, vpipHands: 2, pfrHands: 1, showdownsWon: 1, biggestPot: 100 } }] },
+  ]);
+  assert(season.length === 1 && season[0].games === 2 && season[0].wins === 1 && season[0].net === 600, 'season aggregates across tables by name');
+  deepStrictEqual(season[0].stats, { hands: 12, vpipHands: 5, pfrHands: 3, showdownsWon: 2, biggestPot: 800 });
   t.dispose();
 }
 

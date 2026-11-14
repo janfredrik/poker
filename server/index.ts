@@ -8,7 +8,7 @@ import { Server, type Socket } from 'socket.io';
 import { BUILT_IN_RULESETS, sanitizeRules } from '../shared/presets';
 import { isReaction, type SeatReactionEvent } from '../shared/reactions';
 import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
-import { deleteRuleSet, deleteTableFile, flushAll, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
+import { archiveResult, deleteRuleSet, deleteTableFile, flushAll, listResults, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -63,6 +63,8 @@ app.get('/api/rtc-config', (_req, res) => {
   }
   res.json({ iceServers, expiresAt });
 });
+
+app.get('/api/season-results', (_req, res) => { res.set('Cache-Control', 'no-store').json(listResults()); });
 
 app.get('/api/rulesets', (_req, res) => { res.json(listRuleSets()); });
 app.post('/api/rulesets', (req, res) => {
@@ -292,6 +294,7 @@ io.on('connection', (raw) => {
   s.on('host:close', (_: unknown, ack: Ack) => guard(ack, () => {
     const { t, p } = me();
     if (!p.isHost) throw new GameError('Only the host can close the table.');
+    archiveResult(t);
     io.to(t.id).emit('table:closed');
     t.dispose();
     tables.delete(t.id);

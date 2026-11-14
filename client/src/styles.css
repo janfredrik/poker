@@ -919,3 +919,22 @@ body:has(.lobby) { overflow: auto; }
 .phone__qr > span[role="img"], .phone__qr svg { display: block; width: 100%; height: 100%; }
 .phone__wait, .phone__err { color: var(--ink); font-size: 14px; padding: 16px; text-align: center; }
 .banner--action { display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); }
+
+/* Season results */
+.season__nav { position: absolute; top: 12px; right: 20px; padding: 10px 0; font-weight: 650; }
+.season { min-width: 0; }
+.season__head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.season__head h1 { margin: 0; font-size: clamp(36px, 6vw, 60px); line-height: 1; letter-spacing: -0.035em; }
+.season__section { display: grid; gap: 8px; min-width: 0; }
+.season__section .seg { justify-self: start; margin-bottom: 8px; }
+.season h2, .season p { margin: 0; }
+.season__scroll { overflow-x: auto; }
+.season__scroll .ledger { min-width: 460px; }
+.season .ledger th:first-child { overflow-wrap: anywhere; }
+.season .ledger td { white-space: nowrap; }
+.season__caption { text-align: left; font-weight: 700; padding-top: 12px; }
+.season__night { border-bottom: 1px solid var(--line-2); }
+.season__night summary { cursor: pointer; padding: 12px 0; }
+.season__night summary strong { overflow-wrap: anywhere; }
+.season__night time { float: right; margin-left: 10px; color: var(--muted); }
+.season__night[open] { padding-bottom: 12px; }

@@ -1,9 +1,10 @@
 import { formatChips } from '../../../shared/presets';
+import { rankedResults } from '../../../shared/results';
 import type { TableView } from '../../../shared/types';
 
 export function formatResults(view: TableView): string {
   const { results } = view;
-  const ranked = view.players.filter((p) => p.place != null).sort((a, b) => a.place! - b.place!);
+  const ranked = rankedResults(view);
   const lines = [view.settings.name];
   if (results) {
     const entries = [`${results.entries} buy-ins`];
@@ -16,14 +17,13 @@ export function formatResults(view: TableView): string {
   const creditors: { name: string; amount: number }[] = [];
 
   for (const player of ranked) {
-    const prize = results?.places.find((p) => p.playerId === player.id)?.prize ?? 0;
+    const { prize, net } = player;
     const award = prize && results ? ` · ${formatChips(prize)} ${results.currency}` : '';
     lines.push(`${player.place}. ${player.name}${award}`);
-    if (!results) continue;
+    if (net == null) continue;
 
     const duplicate = ranked.some((p) => p.id !== player.id && p.name === player.name);
     const name = duplicate ? `${player.name} (#${player.place})` : player.name;
-    const net = prize - results.paid[player.id];
     if (net < 0) debtors.push({ name, amount: -net });
     if (net > 0) creditors.push({
       name: player.id === view.you.playerId ? `me (${name})` : name,
@@ -35,7 +35,7 @@ export function formatResults(view: TableView): string {
     lines.push('', 'Settlement');
     const owed = debtors.reduce((sum, p) => sum + p.amount, 0);
     const due = creditors.reduce((sum, p) => sum + p.amount, 0);
-    if (owed !== due || ranked.length !== results.entries) {
+    if (owed !== due || ranked.length !== results.entries || ranked.some((p) => p.net == null)) {
       return [...lines, 'Check the ledger for the final settlement.'].join('\n');
     }
     if (!debtors.length) lines.push('All square.');

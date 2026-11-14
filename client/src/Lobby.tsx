@@ -35,6 +35,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   return (
     <main className="lobby">
       <a className="wordmark lobby__mast" href="/">Poker</a>
+      <a className="season__nav" href="/season">Season standings</a>
       <div className="lobby__stage">
         <div className="lobby__lamp" aria-hidden="true" />
         <header className="lobby__head">

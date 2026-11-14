@@ -77,6 +77,7 @@ export function Drawer({ view, tab, setTab, run, onClose }: Props) {
 
       {tab === 'ledger' && (
         <div className="drawer__body">
+          {view.status === 'finished' && <a href="/season">Season standings</a>}
           {view.results && <Settlement view={view} />}
           {view.ledger.length === 0 ? (
             <p className="drawer__note">Buy-ins, rebuys and results show up here once players sit down.</p>

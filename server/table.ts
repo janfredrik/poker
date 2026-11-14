@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { emptyStats, type PlayerStats } from '../shared/results';
 import { bestHand, shuffledDeck } from './cards';
 import { allInEquity } from './equity';
 import { formatChips as fc, payoutAmounts, sanitizeRules } from '../shared/presets';
@@ -34,6 +35,7 @@ export interface Player {
   place: number | null;
   camOn: boolean;
   micOn: boolean;
+  stats?: PlayerStats;
   /** runtime only */
   connections: number;
 }
@@ -50,6 +52,9 @@ interface HandPlayer {
   raiseSeen: number;
   lastAction: string | null;
   shown: boolean;
+  vpip?: boolean;
+  pfr?: boolean;
+  wonShowdown?: boolean;
 }
 
 interface Hand {
@@ -87,6 +92,7 @@ interface Clock {
 export interface TableSnapshot {
   id: string;
   createdAt: number;
+  finishedAt?: number;
   lastActive: number;
   settings: TableSettings;
   status: 'waiting' | 'running' | 'paused' | 'finished';
@@ -118,6 +124,7 @@ function drawCommunityCards(deck: Card[], dealt: number): Card[] {
 export class Table {
   id: string;
   createdAt: number;
+  finishedAt?: number;
   lastActive: number;
   settings: TableSettings;
   status: 'waiting' | 'running' | 'paused' | 'finished' = 'waiting';
@@ -152,7 +159,7 @@ export class Table {
 
   snapshot(): TableSnapshot {
     return {
-      id: this.id, createdAt: this.createdAt, lastActive: this.lastActive, settings: this.settings,
+      id: this.id, createdAt: this.createdAt, finishedAt: this.finishedAt, lastActive: this.lastActive, settings: this.settings,
       status: this.status, players: this.players.map((p) => ({ ...p, connections: 0 })),
       clock: { ...this.clock }, handNumber: this.handNumber, lastDealerSeat: this.lastDealerSeat,
       log: this.log, hand: this.hand,
@@ -164,6 +171,9 @@ export class Table {
     const t = new Table({ ...s.settings, rules: sanitizeRules(s.settings.rules) }, s.id);
     t.createdAt = s.createdAt;
     t.lastActive = s.lastActive;
+    if (s.status === 'finished') {
+      t.finishedAt = s.finishedAt ?? s.log?.find((e) => e.kind === 'system' && e.text.endsWith(' wins the tournament!'))?.t ?? s.lastActive;
+    }
     t.players = s.players.map((p) => ({
       ...p, forfeited: p.forfeited ?? 0, entered: p.entered ?? p.buyIn > 0, timeBankMs: p.timeBankMs ?? 0, place: p.place ?? null,
       connections: 0, camOn: false, micOn: false,
@@ -871,6 +881,7 @@ export class Table {
       case 'call': {
         if (legal.callAmount === 0) { hp.lastAction = 'Check'; this.addLog('action', `${p.name} checks`); break; }
         pay(legal.callAmount);
+        if (h.street === 'preflop') hp.vpip = true;
         hp.lastAction = hp.allIn ? 'All-in' : 'Call';
         this.addLog('action', `${p.name} calls ${fc(legal.callAmount)}${hp.allIn ? ' and is all-in' : ''}`);
         break;
@@ -885,6 +896,7 @@ export class Table {
         const wasBet = h.currentBet === 0;
         const raiseSize = to - h.currentBet;
         pay(to - hp.bet);
+        if (h.street === 'preflop') { hp.vpip = true; hp.pfr = true; }
         if (raiseSize >= h.lastRaiseSize) {
           h.lastRaiseSize = raiseSize;
           h.fullRaiseCount++;
@@ -1019,6 +1031,7 @@ export class Table {
       for (const w of winners) {
         const amt = share + (odd > 0 ? 1 : 0);
         if (odd > 0) odd--;
+        if (elig.length > 1 && amt > 0) w.wonShowdown = true;
         const v = values.get(w.id)!;
         const prev = won.get(w.id);
         won.set(w.id, { amount: (prev?.amount ?? 0) + amt, hand: v.name, cards: v.cards });
@@ -1045,6 +1058,20 @@ export class Table {
     h.toAct = null;
     h.turnEndsAt = null;
     if (this.turnTimer) { clearTimeout(this.turnTimer); this.turnTimer = null; }
+    // Commit only completed hands. On restore, an interrupted hand and its flags are voided.
+    for (const hp of h.players) {
+      const stats = this.player(hp.id)!.stats ??= emptyStats();
+      stats.hands++;
+      if (hp.vpip) stats.vpipHands++;
+      if (hp.pfr) stats.pfrHands++;
+      if (hp.wonShowdown) stats.showdownsWon++;
+      const award = h.winners?.find((w) => w.playerId === hp.id);
+      if (award) {
+        const matched = Math.max(...h.players.filter((other) => other !== hp).map((other) => other.contrib));
+        const uncalled = Math.max(0, hp.contrib - matched);
+        stats.biggestPot = Math.max(stats.biggestPot, award.amount - uncalled);
+      }
+    }
     // bust-outs sit out until they rebuy
     for (const hp of h.players) {
       const p = this.player(hp.id);
@@ -1130,6 +1157,7 @@ export class Table {
       const w = alive[0];
       w.place = 1;
       this.status = 'finished';
+      this.finishedAt = Date.now();
       this.stopClock();
       if (this.playingSince != null) { this.playedMs = this.played(); this.playingSince = null; }
       if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.nextHandTimer = null; }

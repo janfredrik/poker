@@ -7,6 +7,7 @@ Self-hosted No-Limit Texas Hold'em for home games with friends, with built-in vi
 - **The server deals**, enforces betting (min-raise, short all-ins, side pots, split pots), runs the blind clock and settles hands.
 - **Camera and microphone** per seat over WebRTC, with a TURN relay (coturn) for players behind strict NAT.
 - **Ledger** of buy-ins, rebuys, cash-outs and net results.
+- **Season standings** in the lobby show each finished tournament and calendar-year totals by player name. Use the same name each night. Net totals use the agreed settlement currency. The player stats tab tracks VPIP, PFR, showdowns won and the biggest pot collected in chips. Results stay in `DATA_DIR/results` after tables close or expire. Existing finished table files contribute their standings on upgrade. Hand stats begin with the first hand tracked.
 - **Survives restarts.** Tables, ledgers and saved rule sets live in `/data`. A hand interrupted by a restart is voided and the bets are returned.
 
 ## Rule sets
