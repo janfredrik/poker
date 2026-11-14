@@ -1,6 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { emptyStats, type PlayerStats } from '../shared/results';
-import { bestHand, shuffledDeck } from './cards';
+import { bestHand, madeHandName, shuffledDeck } from './cards';
 import { allInEquity } from './equity';
 import { formatChips as fc, payoutAmounts, sanitizeRules } from '../shared/presets';
 import type {
@@ -1318,6 +1318,7 @@ export class Table {
   view(forId: string | null): TableView {
     const h = this.hand;
     const me = this.player(forId);
+    const myHole = (me && h?.players.find((x) => x.id === me.id)?.hole) || [];
     const players: PublicPlayer[] = this.players
       .filter((p) => p.status !== 'watching' || p.connections > 0 || p.isHost || (this.status === 'finished' && p.entered))
       .map((p) => {
@@ -1351,7 +1352,9 @@ export class Table {
       you: {
         playerId: me?.id ?? null,
         isHost: !!me?.isHost,
-        holeCards: (me && h?.players.find((x) => x.id === me.id)?.hole) || [],
+        holeCards: myHole,
+        // After a rabbit hunt this is what the player would have made with the revealed cards.
+        madeHand: myHole.length ? madeHandName([...myHole, ...(h?.board ?? []), ...(h?.rabbitCards ?? [])]) : null,
         canRabbitHunt: this.allowsRabbitHunt(forId) && !h?.rabbitCards.length,
         legal: me && this.status !== 'paused' ? this.legal(me.id) : null,
         canClaimHost: this.canClaimHost(forId),

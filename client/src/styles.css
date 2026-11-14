@@ -552,7 +552,10 @@ input, textarea { caret-color: var(--lamp); }
   transition: border-color 300ms, box-shadow 400ms;
 }
 .dock.is-turn { border-top-color: var(--lamp); box-shadow: 0 -20px 50px -30px var(--lamp-glow); }
-.dock__hand { display: flex; gap: 8px; }
+.dock__hand { display: grid; gap: 6px; justify-items: center; }
+.dock__cards { display: flex; gap: 8px; }
+.dock__made { font-size: 13px; font-weight: 600; color: var(--bone-2); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.dock__made.is-folded { color: var(--muted); }
 .dock__status { display: grid; line-height: 1.1; gap: 4px; }
 .reactions { position: relative; justify-self: start; }
 .reactions__trigger { display: inline-flex; align-items: center; gap: 6px; }

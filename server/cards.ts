@@ -80,6 +80,14 @@ function combos<T>(arr: T[], k: number): T[][] {
   return out;
 }
 
+/** Name of what someone holds right now: hole cards alone before the flop, best five once there are five or more cards. */
+export function madeHandName(cards: Card[]): string | null {
+  if (cards.length >= 5) return bestHand(cards).name;
+  if (cards.length !== 2) return null;
+  const [a, b] = cards.map(rankOf).sort((x, y) => y - x);
+  return a === b ? `Pair of ${RANK_PLURAL[a]}` : `${RANK_NAMES[a]} High`;
+}
+
 /** Best five-card hand from 5–7 cards. */
 export function bestHand(cards: Card[]): HandValue {
   let best: HandValue | null = null;

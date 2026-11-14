@@ -3,7 +3,7 @@ import { deepStrictEqual, throws } from 'node:assert/strict';
 process.env.POKER_FAST = '1';
 process.env.DATA_DIR = process.env.DATA_DIR ?? '/tmp/poker-selftest';
 const { Table } = await import('./table');
-const { bestHand } = await import('./cards');
+const { bestHand, madeHandName } = await import('./cards');
 const { BUILT_IN_RULESETS } = await import('../shared/presets');
 const rs = (id: string) => BUILT_IN_RULESETS.find((r) => r.id === id)!;
 
@@ -17,6 +17,11 @@ assert(cmp('Ah 2d 3c 4s 5h Kd Qc', '2h 3d 4c 5s 6h Kd Qc') < 0, 'wheel < six-hig
 assert(cmp('Kh Kd 7c 7s 2h 3d 9c', 'Kh Kd 7c 7s 2h 3d Ac') < 0, 'kicker counts in two pair');
 assert(bestHand('Ah Kh Qh Jh Th'.split(' ')).name === 'Royal Flush', 'royal name');
 assert(bestHand('9c 9d 9h 4s 4d'.split(' ')).name === 'Full House, Nines full of Fours', 'full house name');
+assert(madeHandName('Qs Qd'.split(' ')) === 'Pair of Queens', 'pocket pair before the flop');
+assert(madeHandName('7c As'.split(' ')) === 'Ace High', 'high card before the flop');
+assert(madeHandName('Kh Td Kc 7s Th'.split(' ')) === 'Two Pair, Kings and Tens', 'two pair on the flop');
+assert(madeHandName('Kh Td Kc 7s Th 2d 2c'.split(' ')) === 'Two Pair, Kings and Tens', 'best five on the river');
+assert(madeHandName('Kh Td Kc'.split(' ')) === null, 'no name for an odd card count');
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -192,6 +197,8 @@ for (const boardSize of [0, 3, 4, 5]) {
     deepStrictEqual(t.players.map((p) => p.stack), stacks);
     assert(spectator.players.every((p) => !p.shownCards), 'rabbit hunt keeps hole cards private');
     assert(t.log.filter((e) => e.text.startsWith('Rabbit hunt')).length === 1, 'two requests reveal only once');
+    const aHole = h.players.find((x) => x.id === a.id)!.hole;
+    deepStrictEqual(t.view(a.id).you.madeHand, madeHandName([...aHole, ...expectedBoard]), 'made hand includes rabbit cards');
   }
   t.dispose();
 }

@@ -61,6 +61,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
   return (
     <section className={`dock ${myTurn ? 'is-turn' : ''}`} aria-label="Your hand and actions">
       <div className="dock__hand">
+        <div className="dock__cards">
         {you.holeCards.length ? (
           you.holeCards.map((c, i) => (
             <PlayingCard key={c + i} card={c} size="lg" dim={me?.folded} highlight={!!hand?.winners?.some((w) => w.playerId === me?.id && w.cards.includes(c))} delay={i * 90} />
@@ -70,6 +71,12 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
             <PlayingCard empty size="lg" />
             <PlayingCard empty size="lg" />
           </>
+        )}
+        </div>
+        {you.madeHand && (
+          <span className={`dock__made ${me?.folded ? 'is-folded' : ''}`} aria-live="polite">
+            {hand?.rabbitCards?.length ? `Would have had ${you.madeHand}` : you.madeHand}
+          </span>
         )}
       </div>
 

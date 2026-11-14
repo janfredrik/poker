@@ -249,6 +249,8 @@ export interface TableView {
     playerId: string | null;
     isHost: boolean;
     holeCards: Card[];
+    /** What your hole cards make with the board right now, e.g. "Two Pair, Kings and Tens"; null without cards. Includes rabbit-hunt cards once revealed. */
+    madeHand: string | null;
     canRabbitHunt: boolean;
     legal: Legal | null;
     rebuy: RebuyOffer | null;
