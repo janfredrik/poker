@@ -201,7 +201,7 @@ function PlayersTab({ view, run }: { view: TableView; run: Props['run'] }) {
             <div className="plist__row">
               <span className="plist__name">
                 {p.name}
-                <span className="plist__sub">Seat {p.seat} · {formatChips(p.stack)}{p.isHost ? ' · host' : ''}{!p.connected ? ' · away' : ''}</span>
+                <span className="plist__sub">Seat {p.seat} · {formatChips(p.stack)}{p.isHost ? ' · host' : ''}{!p.connected ? ' · disconnected' : ''}</span>
               </span>
               {isHost && (
                 <button className="btn btn--quiet btn--sm" aria-expanded={editing === p.id} onClick={() => { setEditing(editing === p.id ? null : p.id); setStack(String(p.stack)); }}>

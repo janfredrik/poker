@@ -297,6 +297,49 @@ for (const boardSize of [0, 3, 4, 5]) {
   t.dispose();
 }
 
+// Pausing mid-hand freezes the acting player's clock; resuming continues where it stopped.
+{
+  const { GameError } = await import('./table');
+  const t = new Table({ name: 'pause', maxSeats: 3, requireApproval: false, rules: { ...rs('cash-10-20'), turnSeconds: 30 } });
+  const ps = ['A', 'B', 'C'].map((name, i) => t.createPlayer(name, i === 0));
+  ps.forEach((p, i) => { p.connections = 1; p.awaySince = null; t.requestSeat(p, i + 1, p.name, 1000); });
+  t.start(ps[0].id);
+  while (!t.hand || t.hand.toAct == null) await sleep(1);
+  const h = t.hand;
+  const actor = h.players[h.toAct!].id;
+  t.pause(ps[0].id);
+  const v = t.view(actor);
+  assert(v.hand!.turnEndsAt === null && v.hand!.frozenMs! > 29_000, 'paused turn clock is frozen');
+  assert(v.you.legal === null, 'no actions offered while paused');
+  throws(() => t.act(actor, 'fold'), GameError, 'cannot act while paused');
+  await sleep(30);
+  t.start(ps[0].id);
+  const left = t.hand!.turnEndsAt! - Date.now();
+  assert(t.hand === h && h.players[h.toAct!].id === actor && left > 29_000 && left <= v.hand!.frozenMs!, 'resume keeps the same turn and time left');
+  t.act(actor, 'call');
+  assert(h.players.find((x) => x.id === actor)!.acted, 'can act after resume');
+
+  // A player who has been gone a while is checked/folded almost at once instead of stalling the table.
+  const next = h.players[h.toAct!];
+  const away = t.player(next.id)!;
+  away.connections = 0; away.awaySince = Date.now() - 60_000;
+  t.connectionChanged(away);
+  assert(t.view(null).players.find((p) => p.id === away.id)!.connected === false, 'disconnected player shown as disconnected');
+  await sleep(20);
+  assert(next.acted || next.folded || t.hand !== h, 'long-gone player times out quickly');
+
+  // The others may take over as host once the host has been disconnected for a minute.
+  const [host, other] = ps;
+  host.connections = 0; host.awaySince = Date.now() - 5_000;
+  assert(!t.canClaimHost(other.id), 'cannot claim host right after they drop');
+  throws(() => t.claimHost(other.id), GameError);
+  host.awaySince = Date.now() - 61_000;
+  assert(t.view(other.id).you.canClaimHost && !t.view(host.id).you.canClaimHost, 'claim offered to the others only');
+  t.claimHost(other.id);
+  assert(other.isHost && !host.isHost, 'host taken over');
+  t.dispose();
+}
+
 let totalHands = 0;
 for (let i = 0; i < 400; i++) {
   const r = await run(i + 1, 2 + (i % 8), i % BUILT_IN_RULESETS.length);

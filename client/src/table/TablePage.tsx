@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link2, Play, Smartphone } from 'lucide-react';
+import { Crown, Link2, Pause, Play, Smartphone } from 'lucide-react';
 import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { call, prefs, socket, tokens } from '../lib/socket';
@@ -200,7 +200,10 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const winnerSeat = hand?.winners?.length ? view.players.find((p) => p.id === hand.winners![0].playerId)?.seat ?? null : null;
   const lampSeat = actingSeat ?? winnerSeat;
   const lamp = lampSeat ? lerp(posOf(lampSeat), CENTER, 0.18) : CENTER;
-  const turnLeft = hand?.turnEndsAt && hand.turnMs ? Math.max(0, (hand.turnEndsAt - now) / hand.turnMs) : null;
+  const turnLeft = !hand?.turnMs ? null
+    : hand.turnEndsAt ? Math.max(0, (hand.turnEndsAt - now) / hand.turnMs)
+    : hand.frozenMs != null ? Math.max(0, hand.frozenMs / hand.turnMs) : null;
+  const pausedMidHand = view.status === 'paused' && !!hand && !hand.winners;
   const canSit = !me || me.status === 'watching';
   const seatedCount = view.players.filter((p) => p.status === 'seated').length;
   const winCards = new Set(hand?.winners?.flatMap((w) => w.cards) ?? []);
@@ -527,7 +530,18 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           </div>
         )}
 
-        {!connected && <div className="banner" role="status">Reconnecting to the table…</div>}
+        {!connected ? <div className="banner" role="status">Reconnecting to the table…</div>
+          : pausedMidHand ? (
+            <div className="banner banner--action" role="status">
+              <Pause size={15} aria-hidden="true" /> {view.you.isHost ? 'Paused. The hand continues when you resume.' : 'The host paused the game. The hand continues when they resume.'}
+              {view.you.isHost && <button className="btn btn--act btn--sm" onClick={() => fire('host:start')}><Play size={14} /> Resume</button>}
+            </div>
+          ) : view.you.canClaimHost && !handedOff ? (
+            <div className="banner banner--action" role="status">
+              <Crown size={15} aria-hidden="true" /> The host is disconnected.
+              <button className="btn btn--quiet btn--sm" onClick={() => fire('host:claim')}>Take over as host</button>
+            </div>
+          ) : null}
         {toast && <div className="toast" role="alert" onClick={() => setToast(null)}>{toast}</div>}
       </main>
 

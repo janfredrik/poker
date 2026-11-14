@@ -101,6 +101,8 @@ export interface PublicPlayer {
   status: PlayerStatus;
   sittingOut: boolean;
   connected: boolean;
+  /** When the player lost their connection (server clock), null while connected. */
+  awaySince: number | null;
   isHost: boolean;
   camOn: boolean;
   micOn: boolean;
@@ -151,6 +153,8 @@ export interface HandView {
   turnMs: number | null;
   /** The acting player is using their time bank. */
   usingBank: boolean;
+  /** Turn time left on a clock stopped by a pause. */
+  frozenMs: number | null;
   winners: WinnerView[] | null;
   blinds: BlindLevel;
 }
@@ -246,6 +250,8 @@ export interface TableView {
     canRabbitHunt: boolean;
     legal: Legal | null;
     rebuy: RebuyOffer | null;
+    /** The host has been disconnected long enough that this player may take over. */
+    canClaimHost: boolean;
   };
 }
 

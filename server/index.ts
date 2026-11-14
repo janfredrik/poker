@@ -286,6 +286,7 @@ io.on('connection', (raw) => {
   s.on('host:kick', (id: string, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.kick(p.id, id); }));
   s.on('host:stack', (a: { playerId: string; stack: number }, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.adjustStack(p.id, a?.playerId, Number(a?.stack)); }));
   s.on('host:level', (i: number, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.setLevel(p.id, Number(i)); }));
+  s.on('host:claim', (_: unknown, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.claimHost(p.id); }));
   s.on('host:transfer', (id: string, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.transferHost(p.id, id); }));
   s.on('host:settings', (input: Partial<TableSettings>, ack: Ack) => guard(ack, () => {
     const { t, p } = me();

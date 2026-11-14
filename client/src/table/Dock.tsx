@@ -94,8 +94,8 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
           </>
         ) : hand && !hand.winners && actingName ? (
           <>
-            <span className="dock__label">Waiting</span>
-            <span className="dock__mid">{actingName} to act</span>
+            <span className="dock__label">{view.status === 'paused' ? 'Paused' : 'Waiting'}</span>
+            <span className="dock__mid">{hand.toActId === me?.id ? 'Your turn when the game resumes' : `${actingName} to act`}</span>
           </>
         ) : (
           <>

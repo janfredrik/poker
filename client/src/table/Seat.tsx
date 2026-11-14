@@ -95,7 +95,7 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
   const state = player.place != null && player.stack === 0 ? `Out · ${ordinal(player.place)}`
     : acting && usingBank ? 'Time bank'
     : pending ? 'Waiting for host'
-    : !player.connected ? 'Away'
+    : !player.connected ? 'Disconnected'
     : player.sittingOut ? 'Sitting out'
     : out ? 'Out of chips'
     : player.allIn ? 'All-in'

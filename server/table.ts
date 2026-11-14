@@ -38,6 +38,8 @@ export interface Player {
   stats?: PlayerStats;
   /** runtime only */
   connections: number;
+  /** runtime only: when the last connection dropped (or the server started), null while connected */
+  awaySince?: number | null;
 }
 
 interface HandPlayer {
@@ -76,6 +78,8 @@ interface Hand {
   turnMs: number | null;
   usingBank: boolean;
   bankStartedAt: number | null;
+  /** Turn time left when the game was paused mid-turn (the timer is stopped while paused). */
+  frozenMs?: number | null;
   winners: WinnerView[] | null;
   finished: boolean;
   runout: boolean;
@@ -114,7 +118,12 @@ const FAST = process.env.POKER_FAST === '1';
 const NEXT_HAND_DELAY = FAST ? 1 : 4500;
 const SHOWDOWN_DELAY = FAST ? 1 : 7000;
 const RUNOUT_STEP = FAST ? 1 : 1400;
+/** A disconnected player gets this long (counted from when they dropped) before they auto check/fold. */
 const DISCONNECTED_TURN_MS = 20000;
+/** …but never less than this once it is their turn, so the table can see what happens. */
+const DISCONNECTED_MIN_TURN_MS = FAST ? 1 : 3000;
+/** How long the host must be gone before another player may take over as host. */
+export const HOST_CLAIM_AFTER_MS = 60000;
 
 function drawCommunityCards(deck: Card[], dealt: number): Card[] {
   deck.pop(); // burn before each street
@@ -176,7 +185,7 @@ export class Table {
     }
     t.players = s.players.map((p) => ({
       ...p, forfeited: p.forfeited ?? 0, entered: p.entered ?? p.buyIn > 0, timeBankMs: p.timeBankMs ?? 0, place: p.place ?? null,
-      connections: 0, camOn: false, micOn: false,
+      connections: 0, awaySince: Date.now(), camOn: false, micOn: false,
     }));
     t.eliminated = s.eliminated ?? [];
     t.buyEvents = s.buyEvents ?? [];
@@ -286,6 +295,12 @@ export class Table {
 
   /** Called every second by the server loop. */
   tick(now = Date.now()) {
+    // let the other players know when they may take over from a host who dropped
+    const host = this.players.find((p) => p.isHost);
+    if (host && host.connections === 0 && host.awaySince != null) {
+      const away = now - host.awaySince;
+      if (away >= HOST_CLAIM_AFTER_MS && away < HOST_CLAIM_AFTER_MS + 1000) this.onChange();
+    }
     if (this.status === 'running' && this.isTournament() && this.players.some((p) => p.status === 'seated' && p.stack === 0 && p.place == null)) {
       if (this.checkEliminations()) this.touch();
     }
@@ -335,7 +350,7 @@ export class Table {
     const p: Player = {
       id: randomUUID(), token: randomBytes(18).toString('base64url'), name: cleanName(name),
       seat: null, requestedSeat: null, requestedBuyIn: 0, stack: 0, status: 'watching', sittingOut: false,
-      isHost, buyIn: 0, cashOut: 0, forfeited: 0, rebuys: 0, addOnTaken: false, entered: false, timeBankMs: 0, place: null, camOn: false, micOn: false, connections: 0,
+      isHost, buyIn: 0, cashOut: 0, forfeited: 0, rebuys: 0, addOnTaken: false, entered: false, timeBankMs: 0, place: null, camOn: false, micOn: false, connections: 0, awaySince: Date.now(),
     };
     this.players.push(p);
     return p;
@@ -562,6 +577,8 @@ export class Table {
     if (!wasPaused) {
       this.announceLevelStart();
       this.shuffleSeats();
+    } else if (this.hand && !this.hand.finished) {
+      this.thawTurn(this.hand);
     } else {
       this.maybeStartHand();
     }
@@ -607,7 +624,57 @@ export class Table {
     this.stopClock();
     if (this.playingSince != null) { this.playedMs = this.played(); this.playingSince = null; }
     if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.nextHandTimer = null; }
-    this.addLog('system', this.hand && !this.hand.finished ? 'Host paused the game. This hand plays out first.' : 'Host paused the game.');
+    const h = this.hand;
+    const midHand = !!h && !h.finished;
+    if (h && midHand) this.freezeTurn(h);
+    this.addLog('system', midHand ? 'Host paused the game. The hand continues when the host resumes.' : 'Host paused the game.');
+    this.touch();
+  }
+
+  /** Stop the acting player's clock and remember how much of it is left. */
+  private freezeTurn(h: Hand) {
+    if (this.turnTimer) { clearTimeout(this.turnTimer); this.timers.delete(this.turnTimer); this.turnTimer = null; }
+    if (h.toAct == null) { h.frozenMs = null; return; }
+    if (h.usingBank && h.bankStartedAt != null) {
+      const p = this.player(h.players[h.toAct].id);
+      if (p) p.timeBankMs = Math.max(0, p.timeBankMs - (Date.now() - h.bankStartedAt));
+      h.bankStartedAt = null;
+    }
+    h.frozenMs = h.turnEndsAt != null ? Math.max(0, h.turnEndsAt - Date.now()) : null;
+    h.turnEndsAt = null;
+  }
+
+  /** Restart the acting player's clock with the time they had left when the game was paused. */
+  private thawTurn(h: Hand) {
+    const left = h.frozenMs;
+    h.frozenMs = null;
+    if (h.toAct == null) return;
+    const hp = h.players[h.toAct];
+    const p = this.player(hp.id);
+    if (p && p.connections === 0) { this.startTurn(); return; }
+    if (h.usingBank && p) {
+      h.bankStartedAt = Date.now();
+      this.armTurn(hp.id, p.timeBankMs, () => { p.timeBankMs = 0; h.usingBank = false; this.timeOut(); });
+      return;
+    }
+    this.startTurn(left ?? undefined);
+  }
+
+  /** Any seated player may take over as host once the host has been disconnected for a while. */
+  canClaimHost(playerId: string | null): boolean {
+    const me = this.player(playerId);
+    if (!me || me.isHost || me.status !== 'seated') return false;
+    const host = this.players.find((p) => p.isHost);
+    if (!host) return true;
+    return host.connections === 0 && Date.now() - (host.awaySince ?? 0) >= HOST_CLAIM_AFTER_MS;
+  }
+
+  claimHost(playerId: string) {
+    if (!this.canClaimHost(playerId)) throw new GameError('The host is still here. Ask them to make you host.');
+    const to = this.player(playerId)!;
+    const from = this.players.find((p) => p.isHost);
+    for (const p of this.players) p.isHost = p.id === to.id;
+    this.addLog('system', from ? `${to.name} took over as host while ${from.name} is away.` : `${to.name} is now the host.`);
     this.touch();
   }
 
@@ -761,18 +828,34 @@ export class Table {
     return null;
   }
 
-  private startTurn() {
+  /** Start the clock for whoever is to act. `leftMs` resumes a turn that was paused part-way. */
+  private startTurn(leftMs?: number) {
     const h = this.hand!;
     if (this.turnTimer) { clearTimeout(this.turnTimer); this.timers.delete(this.turnTimer); this.turnTimer = null; }
     h.usingBank = false;
     h.bankStartedAt = null;
+    h.frozenMs = null;
     if (h.toAct == null) { h.turnEndsAt = null; h.turnMs = null; return; }
     const hp = h.players[h.toAct];
     const p = this.player(hp.id);
-    let ms: number | null = this.rules.turnSeconds > 0 ? this.rules.turnSeconds * 1000 : null;
+    const full: number | null = this.rules.turnSeconds > 0 ? this.rules.turnSeconds * 1000 : null;
+    let ms = full;
+    let left = leftMs != null && full != null ? Math.min(leftMs, full) : full;
     const away = !!p && p.connections === 0;
-    if (away) ms = Math.min(ms ?? DISCONNECTED_TURN_MS, DISCONNECTED_TURN_MS);
-    this.armTurn(hp.id, ms, () => {
+    if (away) {
+      // The grace period runs from when they dropped, so a player who stays gone does not stall every hand.
+      const grace = Math.max(DISCONNECTED_MIN_TURN_MS, DISCONNECTED_TURN_MS - (Date.now() - (p.awaySince ?? Date.now())));
+      ms = Math.min(full ?? DISCONNECTED_TURN_MS, DISCONNECTED_TURN_MS);
+      left = Math.min(left ?? grace, grace);
+    }
+    if (this.status === 'paused') {
+      // e.g. the next street was dealt after the host paused: wait for resume before the clock runs
+      h.turnMs = ms;
+      h.turnEndsAt = null;
+      h.frozenMs = left;
+      return;
+    }
+    this.armTurn(hp.id, left, () => {
       // regular time is up: dip into the time bank if there is one
       const bank = p?.timeBankMs ?? 0;
       if (this.rules.timeBank.enabled && !away && bank > 0) {
@@ -782,15 +865,16 @@ export class Table {
         this.armTurn(hp.id, bank, () => { if (p) p.timeBankMs = 0; h.usingBank = false; this.timeOut(); });
         this.touch();
       } else this.timeOut();
-    });
+    }, ms);
   }
 
-  private armTurn(who: string, ms: number | null, onExpire: () => void) {
+  /** `ms` is how long until `onExpire`; `totalMs` is the full length of the clock shown to players. */
+  private armTurn(who: string, ms: number | null, onExpire: () => void, totalMs: number | null = ms) {
     const h = this.hand!;
     if (this.turnTimer) { clearTimeout(this.turnTimer); this.timers.delete(this.turnTimer); this.turnTimer = null; }
-    h.turnMs = ms;
-    h.turnEndsAt = ms ? Date.now() + ms : null;
-    if (!ms) return;
+    h.turnMs = totalMs ?? ms;
+    h.turnEndsAt = ms != null ? Date.now() + ms : null;
+    if (ms == null) return;
     const handNo = h.number;
     this.turnTimer = this.later(ms, () => {
       const cur = this.hand;
@@ -810,7 +894,10 @@ export class Table {
 
   /** Re-arm the timer when someone (dis)connects on their turn. */
   connectionChanged(p: Player) {
+    if (p.connections === 0) p.awaySince ??= Date.now();
+    else p.awaySince = null;
     const h = this.hand;
+    if (this.status === 'paused') return;
     if (h && !h.finished && h.toAct != null && h.players[h.toAct].id === p.id) {
       if (p.connections === 0 || this.rules.turnSeconds === 0) this.startTurn();
     }
@@ -837,6 +924,7 @@ export class Table {
     if (!h || h.finished || h.toAct == null) throw new GameError('There is nothing to act on.');
     const hp = h.players[h.toAct];
     if (hp.id !== playerId) throw new GameError('It is not your turn.');
+    if (this.status === 'paused') throw new GameError('The game is paused.');
     this.applyAction(hp, type, amount);
     this.touch();
   }
@@ -1233,6 +1321,7 @@ export class Table {
         return {
           id: p.id, name: p.name, seat: p.seat, requestedSeat: p.requestedSeat, requestedBuyIn: p.requestedBuyIn,
           stack: p.stack, status: p.status, sittingOut: p.sittingOut, connected: p.connections > 0, isHost: p.isHost,
+          awaySince: p.connections > 0 ? null : p.awaySince ?? null,
           camOn: p.camOn, micOn: p.micOn, rebuys: p.rebuys, addOnTaken: p.addOnTaken,
           timeBankMs: h && h.usingBank && h.bankStartedAt != null && h.toAct != null && h.players[h.toAct].id === p.id
             ? Math.max(0, p.timeBankMs - (Date.now() - h.bankStartedAt)) : p.timeBankMs,
@@ -1249,6 +1338,7 @@ export class Table {
       potTotal: h.finished ? 0 : h.players.reduce((s, x) => s + x.contrib - x.bet, 0),
       currentBet: h.currentBet, dealerSeat: h.dealerSeat, sbSeat: h.sbSeat, bbSeat: h.bbSeat,
       toActId: h.toAct != null ? h.players[h.toAct].id : null, turnEndsAt: h.turnEndsAt, turnMs: h.turnMs, usingBank: h.usingBank,
+      frozenMs: h.frozenMs ?? null,
       winners: h.winners, blinds: h.blinds,
     } : null;
     return {
@@ -1259,7 +1349,8 @@ export class Table {
         isHost: !!me?.isHost,
         holeCards: (me && h?.players.find((x) => x.id === me.id)?.hole) || [],
         canRabbitHunt: this.allowsRabbitHunt(forId) && !h?.rabbitCards.length,
-        legal: me ? this.legal(me.id) : null,
+        legal: me && this.status !== 'paused' ? this.legal(me.id) : null,
+        canClaimHost: this.canClaimHost(forId),
         rebuy: me ? this.rebuyOffer(me) : null,
       },
     };
