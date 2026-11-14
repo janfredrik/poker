@@ -1,6 +1,6 @@
 # Poker
 
-Self-hosted No-Limit Texas Hold'em for home games with friends, with built-in video and audio. One Docker image, runs behind your own nginx.
+Self-hosted No-Limit Texas Hold'em for home games with friends, with built-in video and audio.
 
 - **Create a table** with a rule set: blind structure, level length, breaks, rebuy period, max rebuys, add-on, shot clock.
 - **Share the link.** Friends pick a seat, enter a name and a buy-in. No accounts.
@@ -35,20 +35,19 @@ npm run dev
 
 Open http://localhost:5173. Camera and microphone work on `localhost` without HTTPS.
 
-## Deploy (Unraid + Docker + nginx)
+## Deploy
 
 1. Copy `docker-compose.yml` and `.env.example` to the server and create the env file:
    ```bash
    cp .env.example .env
    ```
-   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`). Fill in `PUBLIC_HOST`, `TURN_HOST`, `PUBLIC_IP`, a random `TURN_SECRET` (`openssl rand -hex 32`) and `DATA_PATH` (e.g. `/mnt/user/appdata/poker`). On Unraid keep `PUID=99` and `PGID=100`.
+   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`). Fill in `PUBLIC_HOST`, `TURN_HOST`, `PUBLIC_IP`, a random `TURN_SECRET` (`openssl rand -hex 32`) and `DATA_PATH`.
 2. Pull and start (the image is built by GitHub Actions on every push to `main`):
    ```bash
    docker compose pull && docker compose up -d
    ```
-   If the GHCR package is private, run `docker login ghcr.io` first with a GitHub token that has `read:packages`, or make the package public under the repo's Packages settings. To build locally instead: `docker build -t poker . ` and set `POKER_IMAGE=poker`.
-3. Add the nginx site in [deploy/nginx-poker.conf](deploy/nginx-poker.conf): set your hostname, certificate paths and the Unraid IP/port in `proxy_pass`. It forwards the WebSocket upgrade that the game needs. **HTTPS is required** for camera and microphone.
-4. Forward these ports on your router to the Unraid box:
+3. Add the web/nginx site in [deploy/nginx-poker.conf](deploy/nginx-poker.conf): set your hostname, certificate paths and the Unraid IP/port in `proxy_pass`. It forwards the WebSocket upgrade that the game needs. **HTTPS is required** for camera and microphone.
+4. Forward these ports on your router to the instance:
 
    | Port | Protocol | For |
    |---|---|---|
@@ -56,13 +55,13 @@ Open http://localhost:5173. Camera and microphone work on `localhost` without HT
    | `3478` | UDP and TCP | coturn (STUN/TURN) |
    | `49160-49200` | UDP | coturn relay ports (the actual audio/video) |
 
-   Do not expose `3000`; only nginx on the LAN talks to it. coturn uses host networking, so its ports land directly on the Unraid IP.
+   Do not expose `3000`; only web/nginx on the LAN talks to it. coturn uses host networking.
 
 The compose file caps coturn at ~4 Mbit/s per relay allocation and 40 allocations in total (`--max-bps`, `--user-quota`, `--total-quota`); the 41 relay ports are a hard ceiling anyway. Widen the port range and raise `--total-quota` together if a big table runs out.
 
 Without the TURN ports most players still connect peer-to-peer; the relay is for those behind strict NAT or mobile networks. If you don't want video at all, remove the `coturn` service.
 
-### Behind Cloudflare
+### Behind proxy
 
 The game itself works through Cloudflare's proxy (orange cloud): WebSockets are supported and Socket.IO pings every 25 s, well inside Cloudflare's 100 s idle timeout. Use SSL mode **Full (strict)** with a Let's Encrypt or Cloudflare Origin certificate in nginx.
 
@@ -91,5 +90,3 @@ Health check: `GET /api/health`.
 - `npm test` plays ~1000 random hands against the engine and checks that chips are conserved.
 - `npx tsx server/bots.ts <tableId> 4` seats four bots that play automatically, handy for testing the UI alone.
 - `npm run typecheck`, `npm run build`.
-
-Play money only. No real-money handling.
