@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Save, Trash2 } from 'lucide-react';
 import type { RuleSet } from '../../../shared/types';
 import { BUILT_IN_RULESETS, formatChips } from '../../../shared/presets';
@@ -31,6 +31,7 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
   const [sets, setSets] = useState<RuleSet[]>(BUILT_IN_RULESETS);
   const [open, setOpen] = useState(startOpen);
   const [status, setStatus] = useState<string | null>(null);
+  const selectId = useId();
 
   const load = () => fetch('/api/rulesets').then((r) => r.json()).then(setSets).catch(() => {});
   useEffect(() => { void load(); }, []);
@@ -65,39 +66,44 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
 
   return (
     <div className="picker">
-      <label className="field field--wide">
-        <span className="field__label">Rule set</span>
-        <select
-          value={selected && !dirty ? value.id : '__edited'}
-          onChange={(e) => { const s = sets.find((x) => x.id === e.target.value); if (s) { onChange(structuredClone(s)); setStatus(null); } }}
-        >
-          {(!selected || dirty) && <option value="__edited">{value.name} (edited)</option>}
-          <optgroup label="Presets">
-            {sets.filter((s) => s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </optgroup>
-          {sets.some((s) => !s.builtIn) && (
-            <optgroup label="Saved on this server">
-              {sets.filter((s) => !s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+      <div className="field field--wide">
+        <label className="field__label" htmlFor={selectId}>Rule set</label>
+        <div className="picker__row">
+          <select
+            id={selectId}
+            value={selected && !dirty ? value.id : '__edited'}
+            onChange={(e) => { const s = sets.find((x) => x.id === e.target.value); if (s) { onChange(structuredClone(s)); setStatus(null); } }}
+          >
+            {(!selected || dirty) && <option value="__edited">{value.name} (edited)</option>}
+            <optgroup label="Presets">
+              {sets.filter((s) => s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </optgroup>
-          )}
-        </select>
-        <span className="field__hint">{summarize(value)}</span>
-      </label>
-
-      <div className="picker__bar">
-        <button type="button" className="btn btn--quiet btn--sm" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          {open ? 'Hide rules' : 'Edit rules'}
-        </button>
-        {(dirty || open) && (
-          <button type="button" className="btn btn--quiet btn--sm" onClick={save}>
-            <Save size={14} /> {selected && !selected.builtIn && !dirty ? 'Saved' : selected && !selected.builtIn ? 'Save changes' : 'Save as new rule set'}
+            {sets.some((s) => !s.builtIn) && (
+              <optgroup label="Saved on this server">
+                {sets.filter((s) => !s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </optgroup>
+            )}
+          </select>
+          <button type="button" className="btn btn--quiet picker__edit" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+            {open ? 'Hide rules' : 'Edit rules'}
           </button>
-        )}
-        {selected && !selected.builtIn && (
-          <button type="button" className="btn btn--quiet btn--sm" onClick={remove}><Trash2 size={14} /> Delete</button>
-        )}
-        {status && <span className="picker__status" role="status">{status}</span>}
+        </div>
+        <span className="field__hint">{summarize(value)}</span>
       </div>
+
+      {(dirty || open || (selected && !selected.builtIn) || status) && (
+        <div className="picker__bar">
+          {(dirty || open) && (
+            <button type="button" className="btn btn--quiet btn--sm" onClick={save}>
+              <Save size={14} /> {selected && !selected.builtIn && !dirty ? 'Saved' : selected && !selected.builtIn ? 'Save changes' : 'Save as new rule set'}
+            </button>
+          )}
+          {selected && !selected.builtIn && (
+            <button type="button" className="btn btn--quiet btn--sm" onClick={remove}><Trash2 size={14} /> Delete</button>
+          )}
+          {status && <span className="picker__status" role="status">{status}</span>}
+        </div>
+      )}
 
       {open && <RulesEditor value={value} onChange={(r) => { onChange(r); setStatus(null); }} currentLevel={currentLevel} />}
     </div>

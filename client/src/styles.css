@@ -695,6 +695,9 @@ input, textarea { caret-color: var(--lamp); }
 /* ---------------------------------------------------------------- rules editor */
 
 .picker { display: grid; gap: 12px; }
+.picker__row { display: flex; gap: 10px; align-items: stretch; }
+.picker__row select { flex: 1; min-width: 0; }
+.picker__edit { flex: none; }
 .picker__bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .picker__status { font-size: 13px; color: var(--good); }
 .rules { display: grid; gap: 18px; padding-top: 4px; }
