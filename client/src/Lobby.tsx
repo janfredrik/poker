@@ -58,7 +58,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
         <div className="lobby__lamp" aria-hidden="true" />
         <header className="lobby__head">
           <h1 className="lobby__title">Deal a table <span>for tonight</span></h1>
-          <p className="lobby__lede">No-limit Texas Hold'em on your own server. Set the rules, share the link, and see everyone's face at the table.</p>
+          <p className="lobby__lede">Play poker with your friends. Set the rules, share the link, and see everyone's face at the table.</p>
         </header>
 
       <form className="lobby__card" onSubmit={create}>
@@ -83,21 +83,20 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
         <label className="toggle">
           <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} />
           <span className="toggle__track" aria-hidden="true" />
-          I approve each player before they sit down
+          Players need my approval to join
         </label>
 
         {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="lobby__submit">
           <button className="btn btn--act btn--lg" disabled={busy}>{busy ? 'Opening table…' : 'Open the table'}</button>
-          <span className="lobby__hint">You get an invite link on the next screen.</span>
         </div>
       </form>
 
       <section className="demo" aria-labelledby="demo-title">
         <div className="demo__text">
           <h2 className="demo__title" id="demo-title">Just want to try it?</h2>
-          <p className="demo__lede">Play a few hands against bots with pretend cameras. Nothing is saved.</p>
+          <p className="demo__lede">Play a few hands against bots.</p>
         </div>
         <div className="demo__controls">
           <div className="demo__count" role="radiogroup" aria-label="Number of bots">
