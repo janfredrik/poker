@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Crown, Link2, Pause, Play, Smartphone } from 'lucide-react';
 import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
@@ -154,6 +154,29 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     potRef.current = total;
   }, [view?.hand?.potTotal, view?.players]);
 
+  /* ---- payouts: remember where the pot sits so the chips can fly from there to the winners ---- */
+  const roomRef = useRef<HTMLElement>(null);
+  const potElRef = useRef<HTMLDivElement>(null);
+  const potFrom = useRef<Pt>(CENTER);
+  useLayoutEffect(() => {
+    if (!view?.hand || view.hand.winners) return;
+    const room = roomRef.current?.getBoundingClientRect();
+    const pot = (potElRef.current?.querySelector('.chips') ?? potElRef.current)?.getBoundingClientRect();
+    if (!room || !pot || !room.width || !room.height) return;
+    potFrom.current = {
+      x: ((pot.left + pot.width / 2 - room.left) / room.width) * 100,
+      y: ((pot.top + pot.height / 2 - room.top) / room.height) * 100,
+    };
+  });
+  const paidHand = useRef<number | null>(null);
+  useEffect(() => {
+    const h = view?.hand;
+    if (!h?.winners?.length || paidHand.current === h.number) return;
+    paidHand.current = h.number;
+    const t = setTimeout(chipSound, 650);
+    return () => clearTimeout(t);
+  }, [view?.hand?.number, view?.hand?.winners]);
+
   /* ---- derived ---- */
   const me = view?.players.find((p) => p.id === view.you.playerId) ?? null;
   const mySeat = me?.status === 'seated' ? me.seat : me?.status === 'pending' ? me.requestedSeat : null;
@@ -215,6 +238,10 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const pots = hand?.pots ?? [];
   const potTotal = hand?.potTotal ?? 0;
   const potWithBets = potTotal + view.players.reduce((sum, p) => sum + p.bet, 0);
+  // where a player's chips sit on the felt: between their seat and the pot
+  const betSpot = (pos: Pt): Pt => tall && pos.y >= 25 && pos.y <= 70
+    ? { x: pos.x + (CENTER.x - pos.x) * 0.5, y: pos.y + (pos.y < CENTER.y ? -4 : 4) }
+    : lerp(pos, CENTER, pos.y < 25 ? 0.5 : tall ? 0.55 : 0.4);
 
   const copyLink = async () => {
     const url = `${location.origin}/t/${view.id}`;
@@ -273,7 +300,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         watchers={media.spectators + view.players.filter((x) => x.status === 'watching' && x.connected && x.id !== view.you.playerId).length}
       />
 
-      <main className={`room ${acting ? 'has-turn' : ''}`} style={{ ['--lamp-x' as string]: `${lamp.x}%`, ['--lamp-y' as string]: `${lamp.y}%` }}>
+      <main ref={roomRef} className={`room ${acting ? 'has-turn' : ''}`} style={{ ['--lamp-x' as string]: `${lamp.x}%`, ['--lamp-y' as string]: `${lamp.y}%` }}>
         <div className={`room__lamp ${acting ? 'is-turn' : ''}`} aria-hidden="true" />
         <div className="felt" aria-hidden="false">
           <div className="felt__center">
@@ -309,7 +336,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
               </div>
             ) : hand && !(view.status !== 'running' && hand.winners) ? (
               <>
-                <div className="pot" aria-live="polite">
+                <div className="pot" aria-live="polite" ref={potElRef}>
                   {potTotal > 0 && <ChipStack amount={potTotal} label={false} size="lg" />}
                   <span className="pot__label">{hand.winners ? 'Hand over' : 'Pot'}</span>
                   <span className="pot__amount">{formatChips(hand.winners ? hand.winners.reduce((s, w) => s + w.amount, 0) : potWithBets)}</span>
@@ -439,10 +466,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         {/* bets and dealer button sit on the felt between the seat and the pot */}
         {view.players.filter((p) => p.status === 'seated' && p.seat).map((p) => {
           const pos = posOf(p.seat!);
-          const side = pos.y >= 25 && pos.y <= 70;
-          const b = tall && side
-            ? { x: pos.x + (CENTER.x - pos.x) * 0.5, y: pos.y + (pos.y < CENTER.y ? -4 : 4) }
-            : lerp(pos, CENTER, pos.y < 25 ? 0.5 : tall ? 0.55 : 0.4);
+          const b = betSpot(pos);
           const d = lerp(pos, CENTER, tall ? 0.44 : 0.27);
           return (
             <div key={p.id}>
@@ -456,6 +480,25 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                   <span className="marker marker--dealer" title="Dealer">D</span>
                 </div>
               )}
+            </div>
+          );
+        })}
+
+        {/* the pot slides over to whoever won it, then into their stack */}
+        {hand?.winners?.map((w, i) => {
+          const seat = view.players.find((p) => p.id === w.playerId)?.seat;
+          if (!seat || w.amount <= 0) return null;
+          const pos = posOf(seat);
+          const to = betSpot(pos);
+          const from = potFrom.current;
+          return (
+            <div key={`${hand.number}-${w.playerId}`} className="payout" aria-hidden="true" style={{
+              ['--fx' as string]: `${from.x}%`, ['--fy' as string]: `${from.y}%`,
+              ['--tx' as string]: `${to.x}%`, ['--ty' as string]: `${to.y}%`,
+              ['--sx' as string]: `${pos.x}%`, ['--sy' as string]: `${pos.y}%`,
+              animationDelay: `${i * 180}ms`,
+            }}>
+              <ChipStack amount={w.amount} size="md" />
             </div>
           );
         })}

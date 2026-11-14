@@ -397,6 +397,18 @@ input, textarea { caret-color: var(--lamp); }
 .chips__amount { font-weight: 750; font-size: 14px; color: var(--bone); padding: 2px 7px; border-radius: 6px; background: rgba(8, 20, 22, 0.55); }
 
 .bet { position: absolute; z-index: 4; translate: -50% -50%; animation: rise 300ms var(--ease-out) both; }
+/* a won pot: slides from the middle to the winner's spot on the felt, rests there, then joins their stack */
+.payout {
+  position: absolute; z-index: 5; translate: -50% -50%; pointer-events: none;
+  left: var(--sx); top: var(--sy); opacity: 0;
+  animation: payout 3200ms var(--ease-out) both;
+}
+@keyframes payout {
+  0% { left: var(--fx); top: var(--fy); opacity: 1; scale: 1.15; }
+  28% { left: var(--tx); top: var(--ty); opacity: 1; scale: 1; }
+  82% { left: var(--tx); top: var(--ty); opacity: 1; scale: 1; }
+  100% { left: var(--sx); top: var(--sy); opacity: 0; scale: 0.7; }
+}
 .markers { position: absolute; z-index: 4; translate: -50% -50%; display: flex; gap: 4px; transition: left 500ms var(--ease-out), top 500ms var(--ease-out); }
 .marker {
   display: grid; place-items: center;
