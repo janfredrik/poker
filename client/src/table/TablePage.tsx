@@ -34,6 +34,10 @@ const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.
 let pendingHandoff: string | null = new URLSearchParams(location.hash.slice(1)).get('handoff');
 if (pendingHandoff) history.replaceState(null, '', location.pathname + location.search);
 
+// Phones are where a seat gets handed off to, so offering the QR handoff there is pointless.
+// Touch-only device whose short side is phone-sized (covers landscape too, excludes tablets).
+const isPhone = window.matchMedia('(pointer: coarse) and (hover: none)').matches && Math.min(screen.width, screen.height) < 600;
+
 function useTall() {
   const q = '(max-aspect-ratio: 4/5)';
   const [tall, setTall] = useState(() => window.matchMedia(q).matches);
@@ -256,7 +260,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         mediaBusy={media.busy}
         canMedia={!!me}
         hideMedia={arrived === 'remote'}
-        onPhone={me && view.you.playerId ? () => setPhoneOpen(true) : undefined}
+        onPhone={me && view.you.playerId && !isPhone ? () => setPhoneOpen(true) : undefined}
         onCam={() => void mesh.setCam(!media.camOn)}
         onMic={() => void mesh.setMic(!media.micOn)}
         onCopy={copyLink}
