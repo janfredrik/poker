@@ -100,9 +100,9 @@ input, textarea { caret-color: var(--lamp); }
 }
 .wordmark::before {
   content: '';
-  width: 16px; height: 16px; border-radius: 50%;
-  background: repeating-conic-gradient(var(--chip-red) 0 30deg, var(--chip-bone) 30deg 45deg);
-  box-shadow: inset 0 0 0 4px var(--chip-red), inset 0 0 0 5px var(--chip-bone);
+  width: 24px; height: 24px;
+  flex: 0 0 24px;
+  background: url('/favicon.svg') center / contain no-repeat;
 }
 .wordmark--sm { font-size: 14px; }
 
