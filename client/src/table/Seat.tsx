@@ -127,6 +127,12 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         </span>
       </button>
       {player.status === 'seated' && <SeatReaction playerId={player.id} name={player.name} />}
+      {player.equity != null && (
+        <div className="seat__equity" title="Main pot equity · tied hands share the pot">
+          <span className="sr-only">{player.name}, main pot equity </span>
+          {Number(player.equity.toFixed(1))}% <span aria-hidden="true">equity</span>
+        </div>
+      )}
       {!isYou && stream && stream.getAudioTracks().length > 0 && <RemoteAudio stream={stream} name={player.name} />}
       {isYou && !!holeCards?.length && (
         // covers the picture; the cards straddle its right edge, half on the picture and half beside it

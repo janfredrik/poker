@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { bestHand, shuffledDeck } from './cards';
+import { allInEquity } from './equity';
 import { formatChips as fc, payoutAmounts, sanitizeRules } from '../shared/presets';
 import type {
   BlindLevel, Card, ClockView, HandView, LedgerRow, Legal, LogEntry, PlayerStatus,
@@ -73,6 +74,7 @@ interface Hand {
   winners: WinnerView[] | null;
   finished: boolean;
   runout: boolean;
+  equity?: Record<string, number>;
 }
 
 interface Clock {
@@ -927,8 +929,10 @@ export class Table {
         for (const x of notFolded) x.shown = true;
         this.addLog('hand', 'All in. Cards are turned over.');
       }
+      h.equity = allInEquity(notFolded, h.board, h.players.filter(x => x.folded && x.shown).flatMap(x => x.hole));
+      const boardLength = h.board.length;
       this.later(RUNOUT_STEP, () => {
-        if (this.hand !== h || h.finished) return;
+        if (this.hand !== h || h.finished || h.board.length !== boardLength) return;
         this.dealStreet();
         this.advance();
         this.touch();
@@ -1037,6 +1041,7 @@ export class Table {
   private finishHand(delay: number) {
     const h = this.hand!;
     h.finished = true;
+    delete h.equity;
     h.toAct = null;
     h.turnEndsAt = null;
     if (this.turnTimer) { clearTimeout(this.turnTimer); this.turnTimer = null; }
@@ -1207,6 +1212,7 @@ export class Table {
           inHand: !!hp, hasCards: !!hp && !hp.folded, bet: hp?.bet ?? 0, folded: hp?.folded ?? false,
           allIn: hp?.allIn ?? false, lastAction: hp?.lastAction ?? null,
           shownCards: hp && hp.shown ? hp.hole : null,
+          equity: h?.equity?.[p.id] ?? null,
         };
       });
     const hand: HandView | null = h ? {

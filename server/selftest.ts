@@ -20,6 +20,64 @@ assert(bestHand('9c 9d 9h 4s 4d'.split(' ')).name === 'Full House, Nines full of
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Check the fast runout scoring against the showdown evaluator, including board ties.
+{
+  const { allInEquity } = await import('./equity');
+  const { shuffledDeck } = await import('./cards');
+  for (let i = 0; i < 300; i++) {
+    const deck = shuffledDeck();
+    const board = deck.splice(0, 5);
+    const players = Array.from({ length: 9 }, (_, j) => ({ id: String(j), hole: deck.splice(0, 2) }));
+    const scores = players.map(p => bestHand([...board, ...p.hole]).score);
+    const best = Math.max(...scores);
+    const winners = scores.filter(s => s === best).length;
+    const equity = allInEquity(players, board);
+    players.forEach((p, j) => {
+      const expected = scores[j] === best ? 100 / winners : 0;
+      assert(Math.abs(equity[p.id] - expected) < 1e-9, 'equity agrees with showdown');
+    });
+  }
+  const players = [{ id: 'a', hole: ['As', 'Ad'] }, { id: 'b', hole: ['Kc', 'Kd'] }];
+  const turn = allInEquity(players, ['2h', '4s', '7c', '9h']);
+  assert(Math.abs(turn.b - 100 * 2 / 44) < 1e-9, 'exactly two winning rivers for kings');
+  const tie = allInEquity(players, ['9h', 'Th', 'Jh', 'Qh', 'Kh']);
+  assert(tie.a === 50 && tie.b === 50, 'shared straight flush splits equity');
+}
+
+// A shove alone must not reveal equity. The last call starts the public runout.
+{
+  const rules = { ...rs('cash-10-20'), turnSeconds: 0 };
+  const t = new Table({ name: 'equity', maxSeats: 3, requireApproval: false, rules });
+  const ps = ['A', 'B', 'C'].map((name, i) => t.createPlayer(name, i === 0));
+  ps.forEach((p, i) => { p.connections = 1; t.requestSeat(p, i + 1, p.name, 1000); });
+  t.start(ps[0].id);
+  while (!t.hand) await sleep(1);
+  const h = t.hand;
+  const actor = () => h.players[h.toAct!].id;
+  const folded = actor();
+  t.act(folded, 'fold');
+  t.act(actor(), 'allin');
+  assert(t.view(null).players.every(p => p.equity === null && p.shownCards === null), 'odds hidden with a decision pending');
+  t.act(actor(), 'call');
+  const boards = new Set<number>();
+  const check = () => {
+    const view = t.view(null);
+    if (h.finished) return;
+    boards.add(h.board.length);
+    const live = view.players.filter(p => p.id !== folded);
+    assert(live.every(p => p.equity != null && p.shownCards?.length === 2), 'public odds accompany exposed hands');
+    assert(Math.abs(live.reduce((s, p) => s + (p.equity ?? 0), 0) - 100) < 1e-8, 'runout equities sum to 100');
+    assert(view.players.find(p => p.id === folded)?.equity === null, 'folded seat has no equity');
+    for (const p of live) assert(t.view(p.id).players.find(x => x.id === p.id)?.equity === p.equity, 'viewers share the same calculation');
+  };
+  check();
+  t.onChange = check;
+  while (!h.finished) await sleep(1);
+  assert([...boards].join(',') === '0,3,4', 'odds published before each remaining street');
+  assert(t.view(null).players.every(p => p.equity === null), 'showdown clears odds');
+  t.dispose();
+}
+
 async function run(seed: number, nPlayers: number, rulesIdx: number) {
   const rules = BUILT_IN_RULESETS[rulesIdx];
   const t = new Table({ name: 'test', maxSeats: 9, requireApproval: false, rules: { ...rules, turnSeconds: 0 } });

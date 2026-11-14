@@ -118,6 +118,8 @@ export interface PublicPlayer {
   allIn: boolean;
   lastAction: string | null;
   shownCards: Card[] | null;
+  /** Main-pot equity in percent during an all-in runout, with ties shared. */
+  equity: number | null;
 }
 
 export interface PotView {
