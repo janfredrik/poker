@@ -60,6 +60,7 @@ export interface TimeBankRules {
 
 /** A reusable rule set: blind structure, rebuys, timers, payouts. */
 export interface RuleSet {
+  rabbitHunt: boolean;
   id: string;
   name: string;
   /** Built-in presets cannot be deleted or overwritten. */
@@ -132,6 +133,7 @@ export interface WinnerView {
 }
 
 export interface HandView {
+  rabbitCards: Card[];
   number: number;
   street: Street;
   board: Card[];
@@ -239,6 +241,7 @@ export interface TableView {
     playerId: string | null;
     isHost: boolean;
     holeCards: Card[];
+    canRabbitHunt: boolean;
     legal: Legal | null;
     rebuy: RebuyOffer | null;
   };

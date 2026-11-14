@@ -252,6 +252,7 @@ io.on('connection', (raw) => {
   s.on('player:rebuy', (amount: number, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.rebuy(p, Number(amount)); }));
   s.on('player:addon', (_: unknown, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.addOn(p); }));
   s.on('player:show', (_: unknown, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.show(p.id); }));
+  s.on('player:rabbit', (handNumber: number, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.rabbitHunt(p.id, handNumber); }));
   s.on('player:media', (m: { camOn: boolean; micOn: boolean }, ack: Ack) => guard(ack, () => { const { t, p } = me(); t.setMedia(p, m?.camOn, m?.micOn); }));
 
   s.on('action', (a: { type: string; amount?: number }, ack: Ack) => guard(ack, () => {

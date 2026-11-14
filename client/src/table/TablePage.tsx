@@ -313,9 +313,9 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 </div>
                 <div className="board" aria-label="Board">
                   {Array.from({ length: 5 }, (_, i) => {
-                    const c = hand.board[i];
+                    const c = hand.board[i] ?? hand.rabbitCards?.[i - hand.board.length];
                     return c ? (
-                      <PlayingCard key={c} card={c} size="md" highlight={winCards.has(c)} dim={!!hand.winners && winCards.size > 0 && !winCards.has(c)} delay={i < 3 ? i * 80 : 0} />
+                      <PlayingCard key={c} card={c} size="md" highlight={winCards.has(c)} dim={i >= hand.board.length || (!!hand.winners && winCards.size > 0 && !winCards.has(c))} delay={i < 3 ? i * 80 : 0} />
                     ) : <PlayingCard key={`e${i}`} empty size="md" />;
                   })}
                 </div>
@@ -378,6 +378,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                     <h2 className="felt__title">Waiting for players</h2>
                     <p className="felt__text">A hand starts as soon as two players have chips.</p>
                   </>
+                )}
+              </div>
+            )}
+            {hand && view.you.canRabbitHunt && (
+              <button className="btn btn--quiet btn--sm" disabled={busy} onClick={() => fire('player:rabbit', hand.number)}>Rabbit hunt</button>
+            )}
+            {!!hand?.rabbitCards?.length && (
+              <div className="felt__waiting" role="status">
+                <span className="felt__text">Rabbit hunt · {hand.board.length === 0 ? 'Flop, turn and river' : hand.board.length === 3 ? 'Turn and river' : 'River'}</span>
+                {view.status !== 'running' && (
+                  <div className="board">{hand.rabbitCards.map((card) => <PlayingCard key={card} card={card} size="sm" />)}</div>
                 )}
               </div>
             )}

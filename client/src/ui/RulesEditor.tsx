@@ -136,6 +136,12 @@ export function RulesEditor({ value: r, onChange, currentLevel }: Props) {
       )}
 
       <fieldset className="rules__section">
+        <legend>Rabbit hunt</legend>
+        <Switch label="Allow rabbit hunts" checked={r.rabbitHunt} onChange={(rabbitHunt) => set({ rabbitHunt })} />
+        <span className="field__hint">After a fold ends the hand, a player can reveal the remaining community cards to everyone.</span>
+      </fieldset>
+
+      <fieldset className="rules__section">
         <legend>Leaving the table</legend>
         <Switch label="Players can cash out when they leave" checked={r.cashOut} onChange={(v) => set({ cashOut: v })} />
         <span className="field__hint">

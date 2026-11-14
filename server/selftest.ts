@@ -1,4 +1,5 @@
 // Engine self-test: plays thousands of random hands and checks invariants.
+import { deepStrictEqual, throws } from 'node:assert/strict';
 process.env.POKER_FAST = '1';
 process.env.DATA_DIR = process.env.DATA_DIR ?? '/tmp/poker-selftest';
 const { Table } = await import('./table');
@@ -89,6 +90,52 @@ async function run(seed: number, nPlayers: number, rulesIdx: number) {
   const gs = g.stack; t3.leaveSeat(g);
   assert(g.cashOut === gs && g.forfeited === 0, 'cash game leave cashes out');
   t3.dispose();
+}
+
+// Rabbit hunts use the same deck and burns as a normal flop, turn and river.
+for (const boardSize of [0, 3, 4, 5]) {
+  const rules = { ...rs('cash-10-20'), rabbitHunt: true };
+  const t = new Table({ name: 'Rabbit hunt', maxSeats: 2, requireApproval: false, rules });
+  const a = t.createPlayer('A', true), b = t.createPlayer('B');
+  for (const [i, p] of [a, b].entries()) {
+    p.connections = 1;
+    t.requestSeat(p, i + 1, p.name, 2000);
+  }
+  t.start(a.id);
+  for (let i = 0; i < 100 && !t.hand; i++) await sleep(2);
+  const h = t.hand!;
+  const upcoming = [...h.deck].reverse();
+  const expectedBoard = [1, 2, 3, 5, 7].map((i) => upcoming[i]);
+  throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+  while (h.board.length < boardSize) {
+    const id = h.players[h.toAct!].id;
+    t.act(id, t.legal(id)!.canCheck ? 'check' : 'call');
+  }
+  deepStrictEqual(h.board, expectedBoard.slice(0, boardSize));
+  t.act(h.players[h.toAct!].id, 'fold');
+  deepStrictEqual(t.view(null).hand!.rabbitCards, []);
+  if (boardSize === 5) {
+    throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+  } else {
+    rules.rabbitHunt = false;
+    throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+    rules.rabbitHunt = true;
+    throws(() => t.rabbitHunt('spectator', h.number), /unavailable/);
+    throws(() => t.rabbitHunt(a.id, h.number - 1), /unavailable/);
+    const stacks = t.players.map((p) => p.stack);
+    const winners = structuredClone(h.winners);
+    assert(t.view(a.id).you.canRabbitHunt, 'participant can request rabbit hunt');
+    t.rabbitHunt(a.id, h.number);
+    t.rabbitHunt(b.id, h.number);
+    const spectator = t.view(null);
+    deepStrictEqual(spectator.hand!.rabbitCards, expectedBoard.slice(boardSize));
+    deepStrictEqual(spectator.hand!.board, expectedBoard.slice(0, boardSize));
+    deepStrictEqual(spectator.hand!.winners, winners);
+    deepStrictEqual(t.players.map((p) => p.stack), stacks);
+    assert(spectator.players.every((p) => !p.shownCards), 'rabbit hunt keeps hole cards private');
+    assert(t.log.filter((e) => e.text.startsWith('Rabbit hunt')).length === 1, 'two requests reveal only once');
+  }
+  t.dispose();
 }
 
 // payouts: buy-ins to 1st, rebuys rotate over 3 places

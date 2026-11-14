@@ -13,6 +13,7 @@ export function summarize(r: RuleSet): string {
     parts.push(r.rebuy.untilMinutes ? `${lim} in the first ${r.rebuy.untilMinutes} min` : r.rebuy.untilLevel && r.levelMinutes > 0 ? `${lim} through level ${r.rebuy.untilLevel}` : lim);
   } else parts.push('no rebuys');
   if (r.turnSeconds) parts.push(`${r.turnSeconds}s to act`);
+  if (r.rabbitHunt) parts.push('rabbit hunt');
   if (r.timeBank.enabled && r.turnSeconds) parts.push(`${r.timeBank.startSeconds}s time bank`);
   if (r.payout.enabled) parts.push(`${formatChips(r.payout.buyIn)} ${r.payout.currency} buy-in`);
   return parts.join(' · ');

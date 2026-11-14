@@ -23,6 +23,7 @@ Four presets ship with the app (cash game, home tournament, turbo, freezeout). P
 | Who can rebuy | Only when busted, at or below a stack size, or anyone between hands. |
 | Add-on | One per player, available during the chosen level and the next. |
 | Time to act | Shot clock in seconds. On timeout the player checks if possible, otherwise folds. `0` = off. |
+| Rabbit hunt | Off by default. After a fold ends a hand before the river, anyone dealt into that hand can reveal the remaining community cards to the table. |
 
 ## Run it locally
 

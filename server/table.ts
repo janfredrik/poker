@@ -55,6 +55,7 @@ interface Hand {
   number: number;
   deck: Card[];
   board: Card[];
+  rabbitCards: Card[];
   street: Street;
   players: HandPlayer[]; // ordered by seat
   dealerSeat: number;
@@ -106,6 +107,11 @@ const NEXT_HAND_DELAY = FAST ? 1 : 4500;
 const SHOWDOWN_DELAY = FAST ? 1 : 7000;
 const RUNOUT_STEP = FAST ? 1 : 1400;
 const DISCONNECTED_TURN_MS = 20000;
+
+function drawCommunityCards(deck: Card[], dealt: number): Card[] {
+  deck.pop(); // burn before each street
+  return dealt === 0 ? [deck.pop()!, deck.pop()!, deck.pop()!] : [deck.pop()!];
+}
 
 export class Table {
   id: string;
@@ -675,7 +681,7 @@ export class Table {
       acted: false, raiseSeen: 0, lastAction: null, shown: false,
     }));
     const h: Hand = {
-      number: this.handNumber, deck, board: [], street: 'preflop', players, dealerSeat, sbSeat, bbSeat, blinds,
+      number: this.handNumber, deck, board: [], rabbitCards: [], street: 'preflop', players, dealerSeat, sbSeat, bbSeat, blinds,
       currentBet: 0, lastRaiseSize: blinds.bb, fullRaiseCount: 0, toAct: null, turnEndsAt: null, turnMs: null, usingBank: false, bankStartedAt: null,
       winners: null, finished: false, runout: false,
     };
@@ -922,7 +928,7 @@ export class Table {
         this.addLog('hand', 'All in. Cards are turned over.');
       }
       this.later(RUNOUT_STEP, () => {
-        if (this.hand !== h) return;
+        if (this.hand !== h || h.finished) return;
         this.dealStreet();
         this.advance();
         this.touch();
@@ -952,10 +958,8 @@ export class Table {
 
   private dealStreet() {
     const h = this.hand!;
-    h.deck.pop(); // burn
-    if (h.street === 'preflop') { h.board.push(h.deck.pop()!, h.deck.pop()!, h.deck.pop()!); h.street = 'flop'; }
-    else if (h.street === 'flop') { h.board.push(h.deck.pop()!); h.street = 'turn'; }
-    else if (h.street === 'turn') { h.board.push(h.deck.pop()!); h.street = 'river'; }
+    h.board.push(...drawCommunityCards(h.deck, h.board.length));
+    h.street = h.board.length === 3 ? 'flop' : h.board.length === 4 ? 'turn' : 'river';
     this.addLog('hand', `${h.street[0].toUpperCase()}${h.street.slice(1)}: ${h.board.join(' ')}`);
   }
 
@@ -1045,7 +1049,11 @@ export class Table {
       }
     }
     if (this.isTournament()) this.checkEliminations(h);
-    if (this.nextHandTimer) clearTimeout(this.nextHandTimer);
+    this.scheduleNextHand(delay);
+  }
+
+  private scheduleNextHand(delay: number) {
+    if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.timers.delete(this.nextHandTimer); }
     this.nextHandTimer = this.later(delay, () => {
       this.nextHandTimer = null;
       if (this.status === 'running' && !this.clock.onBreak && !this.shuffling && this.eligibleForHand().length >= 2) this.startHand();
@@ -1059,6 +1067,28 @@ export class Table {
     if (!hp || !this.hand?.finished) throw new GameError('You can show your cards after the hand.');
     hp.shown = true;
     this.addLog('hand', `${this.name(playerId)} shows ${hp.hole.join(' ')}`);
+    this.touch();
+  }
+
+  private allowsRabbitHunt(playerId: string | null): boolean {
+    const h = this.hand;
+    return !!(this.rules.rabbitHunt && h?.finished && h.board.length < 5 &&
+      h.winners?.length === 1 && h.winners[0].hand === null &&
+      h.players.some((p) => p.id === playerId));
+  }
+
+  rabbitHunt(playerId: string, handNumber: number) {
+    const h = this.hand;
+    if (!h || h.number !== handNumber || !this.allowsRabbitHunt(playerId)) {
+      throw new GameError('Rabbit hunt is unavailable for this hand.');
+    }
+    if (h.rabbitCards.length) return;
+    const deck = [...h.deck];
+    while (h.board.length + h.rabbitCards.length < 5) {
+      h.rabbitCards.push(...drawCommunityCards(deck, h.board.length + h.rabbitCards.length));
+    }
+    this.addLog('hand', `Rabbit hunt · hand #${h.number} · ${this.name(playerId)} reveals ${h.rabbitCards.join(' ')}`);
+    if (this.status === 'running') this.scheduleNextHand(NEXT_HAND_DELAY);
     this.touch();
   }
 
@@ -1180,7 +1210,7 @@ export class Table {
         };
       });
     const hand: HandView | null = h ? {
-      number: h.number, street: h.street, board: h.board,
+      number: h.number, street: h.street, board: h.board, rabbitCards: h.rabbitCards,
       pots: h.finished ? [] : this.collectedPots(),
       potTotal: h.finished ? 0 : h.players.reduce((s, x) => s + x.contrib - x.bet, 0),
       currentBet: h.currentBet, dealerSeat: h.dealerSeat, sbSeat: h.sbSeat, bbSeat: h.bbSeat,
@@ -1194,6 +1224,7 @@ export class Table {
         playerId: me?.id ?? null,
         isHost: !!me?.isHost,
         holeCards: (me && h?.players.find((x) => x.id === me.id)?.hole) || [],
+        canRabbitHunt: this.allowsRabbitHunt(forId) && !h?.rabbitCards.length,
         legal: me ? this.legal(me.id) : null,
         rebuy: me ? this.rebuyOffer(me) : null,
       },

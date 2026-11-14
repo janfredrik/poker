@@ -19,6 +19,7 @@ export function ladder(startSb: number, count: number, anteFromLevel = 0): Blind
 export const BUILT_IN_RULESETS: RuleSet[] = [
   {
     id: 'friday-300',
+    rabbitHunt: false,
     name: 'Friday tournament (300 kr)',
     builtIn: true,
     startingStack: 5000,
@@ -35,6 +36,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   },
   {
     id: 'cash-10-20',
+    rabbitHunt: false,
     name: 'Cash game 10/20',
     builtIn: true,
     startingStack: 2000,
@@ -51,6 +53,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   },
   {
     id: 'home-tourney',
+    rabbitHunt: false,
     name: 'Home tournament (15 min levels)',
     builtIn: true,
     startingStack: 5000,
@@ -67,6 +70,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   },
   {
     id: 'turbo',
+    rabbitHunt: false,
     name: 'Turbo (8 min levels)',
     builtIn: true,
     startingStack: 3000,
@@ -83,6 +87,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   },
   {
     id: 'freezeout',
+    rabbitHunt: false,
     name: 'Freezeout (20 min, no rebuys)',
     builtIn: true,
     startingStack: 10000,
@@ -117,6 +122,7 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
     id: String(r.id || 'custom').slice(0, 64),
     name: String(r.name || 'Custom rules').slice(0, 60),
     builtIn: false,
+    rabbitHunt: r.rabbitHunt === true,
     startingStack: int(r.startingStack, 1, 1e9, 2000),
     levelMinutes: int(r.levelMinutes, 0, 240, 0),
     cashOut: typeof r.cashOut === 'boolean' ? r.cashOut : int(r.levelMinutes, 0, 240, 0) === 0,
