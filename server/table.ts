@@ -207,9 +207,9 @@ export class Table {
         const p = t.players.find((x) => x.id === hp.id);
         if (p) p.stack += hp.contrib;
       }
-      t.addLog('system', `Server restarted during hand #${s.hand.number}. The hand was voided and all bets returned.`);
+      t.addLog('system', `Serveren startet på nytt under hånd nr. ${s.hand.number}. Hånden ble annullert og alle innsatser ble tilbakeført.`);
     }
-    if (t.status === 'paused') t.addLog('system', 'Game paused after a server restart. The host can resume.');
+    if (t.status === 'paused') t.addLog('system', 'Spillet er satt på pause etter omstart. Verten kan starte det igjen.');
     return t;
   }
 
@@ -247,14 +247,14 @@ export class Table {
   }
 
   private requireHost(id: string) {
-    if (!this.player(id)?.isHost) throw new GameError('Only the host can do that.');
+    if (!this.player(id)?.isHost) throw new GameError('Bare verten kan gjøre dette.');
   }
 
   private seatTaken(seat: number) {
     return this.players.some((p) => (p.status === 'seated' && p.seat === seat) || (p.status === 'pending' && p.requestedSeat === seat));
   }
 
-  private name(id: string) { return this.player(id)?.name ?? 'Someone'; }
+  private name(id: string) { return this.player(id)?.name ?? 'En spiller'; }
 
   private isTournament() { return this.rules.levelMinutes > 0; }
 
@@ -322,7 +322,7 @@ export class Table {
         const every = this.rules.breakEveryLevels;
         if (every > 0 && this.rules.breakMinutes > 0 && levelNo % every === 0) {
           this.clock.onBreak = true;
-          this.addLog('system', `Break: ${this.rules.breakMinutes} minutes. The current hand plays out first.`);
+          this.addLog('system', `Pause i ${this.rules.breakMinutes} min. Hånden som pågår, spilles ferdig først.`);
         } else {
           this.clock.levelIndex++;
           this.announceLevel();
@@ -340,12 +340,12 @@ export class Table {
 
   private announceLevel() {
     const l = this.levelAt(this.clock.levelIndex);
-    this.addLog('system', `Blinds up: level ${this.clock.levelIndex + 1}, ${fc(l.sb)}/${fc(l.bb)}${l.ante ? ` ante ${fc(l.ante)}` : ''}.`);
+    this.addLog('system', `Nivå ${this.clock.levelIndex + 1} · nye blinds ${fc(l.sb)}/${fc(l.bb)}${l.ante ? ` ante ${fc(l.ante)}` : ''}.`);
     const ru = this.rules.rebuy;
     if (ru.enabled && ru.untilLevel > 0 && this.clock.levelIndex + 1 === ru.untilLevel + 1) {
-      this.addLog('system', 'Rebuy period is over.');
+      this.addLog('system', 'Rebuy-perioden er over.');
     }
-    if (this.isFinalLevel()) this.addLog('system', 'Final level: these blinds stay until the game ends.');
+    if (this.isFinalLevel()) this.addLog('system', 'Blinds øker ikke mer. Siste nivå varer til spillet er over.');
   }
 
   /* ---------------- joining & seating ---------------- */
@@ -363,18 +363,18 @@ export class Table {
   private validBuyIn(amount: number): number {
     if (this.isTournament()) return this.rules.startingStack;
     const n = Math.round(Number(amount));
-    if (!Number.isFinite(n) || n <= 0) throw new GameError('Enter a buy-in above zero.');
-    if (n > 1e9) throw new GameError('That buy-in is too large.');
+    if (!Number.isFinite(n) || n <= 0) throw new GameError('Oppgi en buy-in større enn null.');
+    if (n > 1e9) throw new GameError('For høy buy-in.');
     return n;
   }
 
   requestSeat(p: Player, seat: number, name: string, buyIn: number) {
-    if (p.status === 'seated') throw new GameError('You already have a seat.');
-    if (!Number.isInteger(seat) || seat < 1 || seat > this.settings.maxSeats) throw new GameError('Pick a seat at the table.');
-    if (this.seatTaken(seat) && p.requestedSeat !== seat) throw new GameError('That seat was just taken. Pick another.');
+    if (p.status === 'seated') throw new GameError('Du har allerede et sete.');
+    if (!Number.isInteger(seat) || seat < 1 || seat > this.settings.maxSeats) throw new GameError('Velg et sete ved bordet.');
+    if (this.seatTaken(seat) && p.requestedSeat !== seat) throw new GameError('Setet ble nettopp tatt. Velg et annet.');
     const nm = cleanName(name);
     if (this.players.some((o) => o.id !== p.id && o.status !== 'watching' && o.name.toLowerCase() === nm.toLowerCase())) {
-      throw new GameError(`Someone at the table is already called ${nm}.`);
+      throw new GameError(`En annen spiller ved bordet heter allerede ${nm}.`);
     }
     p.name = nm;
     const amount = this.validBuyIn(buyIn);
@@ -382,7 +382,7 @@ export class Table {
       p.status = 'pending';
       p.requestedSeat = seat;
       p.requestedBuyIn = amount;
-      this.addLog('system', `${p.name} asks to sit in seat ${seat} with ${fc(amount)}.`);
+      this.addLog('system', `${p.name} ber om sete ${seat} med ${fc(amount)} chips.`);
     } else {
       this.seat(p, seat, amount);
     }
@@ -399,14 +399,14 @@ export class Table {
     p.sittingOut = false;
     p.place = null;
     if (!p.entered) { p.entered = true; p.timeBankMs = this.rules.timeBank.startSeconds * 1000; }
-    this.addLog('system', `${p.name} sits in seat ${seat} with ${fc(amount)}.`);
+    this.addLog('system', `${p.name} setter seg i sete ${seat} med ${fc(amount)} chips.`);
     this.maybeStartHand();
   }
 
   approve(hostId: string, playerId: string) {
     this.requireHost(hostId);
     const p = this.player(playerId);
-    if (!p || p.status !== 'pending' || p.requestedSeat == null) throw new GameError('That request is gone.');
+    if (!p || p.status !== 'pending' || p.requestedSeat == null) throw new GameError('Forespørselen er ikke lenger tilgjengelig.');
     this.seat(p, p.requestedSeat, p.requestedBuyIn);
     this.touch();
   }
@@ -418,7 +418,7 @@ export class Table {
     p.status = 'watching';
     p.requestedSeat = null;
     p.requestedBuyIn = 0;
-    this.addLog('system', `${p.name}'s seat request was declined.`);
+    this.addLog('system', `Verten avslo forespørselen fra ${p.name}.`);
     this.touch();
   }
 
@@ -428,7 +428,7 @@ export class Table {
   }
 
   /** Leave the seat. Cashes out the stack when the rules allow it, otherwise the chips go out of play. */
-  leaveSeat(p: Player, reason = 'leaves the table') {
+  leaveSeat(p: Player, reason = 'forlater bordet') {
     if (p.status === 'pending') {
       p.status = 'watching';
       p.requestedSeat = null;
@@ -443,7 +443,7 @@ export class Table {
       } else {
         hp.folded = true;
         hp.lastAction = 'Fold';
-        this.addLog('action', `${p.name} folds`);
+        this.addLog('action', `${p.name} folder`);
         this.advance();
       }
     }
@@ -453,10 +453,10 @@ export class Table {
       this.addLog('system', `${p.name} ${reason}.`);
     } else if (this.canCashOut()) {
       p.cashOut += p.stack;
-      this.addLog('system', `${p.name} ${reason} with ${fc(p.stack)}.`);
+      this.addLog('system', `${p.name} ${reason} med ${fc(p.stack)} chips.`);
     } else {
       p.forfeited += p.stack;
-      this.addLog('system', `${p.name} ${reason}. Their ${fc(p.stack)} in chips go out of play (no cash-outs in this game).`);
+      this.addLog('system', `${p.name} ${reason}. ${fc(p.stack)} chips tas ut av spill fordi bordet ikke har cash-out.`);
     }
     const wasEntered = p.entered && this.status !== 'waiting';
     p.stack = 0;
@@ -473,14 +473,14 @@ export class Table {
   kick(hostId: string, playerId: string) {
     this.requireHost(hostId);
     const p = this.player(playerId);
-    if (!p || p.isHost) throw new GameError('You cannot remove that player.');
-    this.leaveSeat(p, 'was removed by the host');
+    if (!p || p.isHost) throw new GameError('Du kan ikke fjerne denne spilleren.');
+    this.leaveSeat(p, 'ble fjernet av verten');
   }
 
   setSittingOut(p: Player, value: boolean) {
     if (p.status !== 'seated') return;
     p.sittingOut = value;
-    this.addLog('system', value ? `${p.name} sits out until they come back.` : `${p.name} is back.`);
+    this.addLog('system', value ? `${p.name} står over inntil videre.` : `${p.name} er tilbake.`);
     if (!value) this.maybeStartHand();
     this.touch();
   }
@@ -488,7 +488,7 @@ export class Table {
   rename(p: Player, name: string) {
     const nm = cleanName(name);
     if (nm !== p.name) {
-      this.addLog('system', `${p.name} is now ${nm}.`);
+      this.addLog('system', `${p.name} heter nå ${nm}.`);
       p.name = nm;
       this.touch();
     }
@@ -508,14 +508,14 @@ export class Table {
     const levelNo = this.clock.levelIndex + 1;
     const inLiveHand = !!this.handPlayer(p.id) && !!this.hand && !this.hand.finished && !this.handPlayer(p.id)!.folded;
     let reason: string | null = null;
-    if (!r.enabled) reason = 'Rebuys are off for this game.';
-    else if (r.untilLevel > 0 && this.isTournament() && levelNo > r.untilLevel) reason = `Rebuys closed after level ${r.untilLevel}.`;
-    else if (r.untilMinutes > 0 && this.status !== 'waiting' && this.played() > r.untilMinutes * 60000) reason = `Rebuys closed ${r.untilMinutes} minutes after the start.`;
-    else if (p.place != null) reason = 'You are out of this tournament.';
-    else if (r.maxPerPlayer > 0 && p.rebuys >= r.maxPerPlayer) reason = `You have used all ${r.maxPerPlayer} rebuys.`;
-    else if (r.maxStackToRebuy === 0 && p.stack > 0) reason = 'You can rebuy when you are out of chips.';
-    else if (r.maxStackToRebuy > 0 && p.stack > r.maxStackToRebuy) reason = `You can rebuy at ${fc(r.maxStackToRebuy)} or less.`;
-    else if (inLiveHand) reason = 'You can rebuy after this hand.';
+    if (!r.enabled) reason = 'Dette spillet har ingen rebuys.';
+    else if (r.untilLevel > 0 && this.isTournament() && levelNo > r.untilLevel) reason = `Rebuy-perioden tok slutt etter nivå ${r.untilLevel}.`;
+    else if (r.untilMinutes > 0 && this.status !== 'waiting' && this.played() > r.untilMinutes * 60000) reason = `Rebuy-perioden tok slutt etter ${r.untilMinutes} minutters spill.`;
+    else if (p.place != null) reason = 'Du er ute av turneringen.';
+    else if (r.maxPerPlayer > 0 && p.rebuys >= r.maxPerPlayer) reason = `Du har nådd grensen på ${r.maxPerPlayer} ${r.maxPerPlayer === 1 ? 'rebuy' : 'rebuys'}.`;
+    else if (r.maxStackToRebuy === 0 && p.stack > 0) reason = 'Du kan gjøre rebuy når du er tom for chips.';
+    else if (r.maxStackToRebuy > 0 && p.stack > r.maxStackToRebuy) reason = `Du kan gjøre rebuy når du har ${fc(r.maxStackToRebuy)} chips eller færre.`;
+    else if (inLiveHand) reason = 'Du kan gjøre rebuy etter denne hånden.';
     const a = this.rules.addOn;
     const addOnAllowed = a.enabled && !p.addOnTaken && !inLiveHand && levelNo >= a.atLevel && levelNo <= a.atLevel + 1;
     return { allowed: reason == null, amount: r.amount, reason, addOnAllowed, addOnAmount: a.amount };
@@ -523,43 +523,43 @@ export class Table {
 
   rebuy(p: Player, amount: number) {
     const offer = this.rebuyOffer(p);
-    if (!offer) throw new GameError('Take a seat first.');
-    if (!offer.allowed) throw new GameError(offer.reason ?? 'Rebuy not allowed right now.');
+    if (!offer) throw new GameError('Velg et sete ved bordet først.');
+    if (!offer.allowed) throw new GameError(offer.reason ?? 'Du kan ikke gjøre rebuy nå.');
     const amt = offer.amount > 0 ? offer.amount : Math.round(Number(amount));
-    if (!Number.isFinite(amt) || amt <= 0 || amt > 1e9) throw new GameError('Enter a rebuy amount above zero.');
+    if (!Number.isFinite(amt) || amt <= 0 || amt > 1e9) throw new GameError('Oppgi et rebuy-beløp større enn null.');
     p.stack += amt;
     p.buyIn += amt;
     p.rebuys++;
     p.sittingOut = false;
     this.buyEvents.push({ playerId: p.id, kind: 'rebuy' });
-    this.addLog('system', `${p.name} rebuys for ${fc(amt)}.`);
+    this.addLog('system', `${p.name} gjør rebuy for ${fc(amt)} chips.`);
     this.maybeStartHand();
     this.touch();
   }
 
   addOn(p: Player) {
     const offer = this.rebuyOffer(p);
-    if (!offer?.addOnAllowed) throw new GameError('The add-on is not available right now.');
+    if (!offer?.addOnAllowed) throw new GameError('Add-on er ikke tilgjengelig nå.');
     p.stack += offer.addOnAmount;
     p.buyIn += offer.addOnAmount;
     p.addOnTaken = true;
     this.buyEvents.push({ playerId: p.id, kind: 'addon' });
-    this.addLog('system', `${p.name} takes the add-on for ${fc(offer.addOnAmount)}.`);
+    this.addLog('system', `${p.name} tar en add-on på ${fc(offer.addOnAmount)} chips.`);
     this.touch();
   }
 
   adjustStack(hostId: string, playerId: string, newStack: number) {
     this.requireHost(hostId);
     const p = this.player(playerId);
-    if (!p || p.status !== 'seated') throw new GameError('That player is not seated.');
+    if (!p || p.status !== 'seated') throw new GameError('Spilleren har ikke noe sete ved bordet.');
     const hp = this.handPlayer(p.id);
-    if (hp && this.hand && !this.hand.finished && !hp.folded) throw new GameError('Wait until this hand is over.');
+    if (hp && this.hand && !this.hand.finished && !hp.folded) throw new GameError('Vent til hånden er ferdig.');
     const n = Math.round(Number(newStack));
-    if (!Number.isFinite(n) || n < 0 || n > 1e9) throw new GameError('Enter a stack of zero or more.');
+    if (!Number.isFinite(n) || n < 0 || n > 1e9) throw new GameError('Oppgi en stack på null eller mer.');
     const delta = n - p.stack;
     p.stack = n;
     p.buyIn += delta;
-    this.addLog('system', `Host set ${p.name}'s stack to ${fc(n)} (${delta >= 0 ? '+' : ''}${fc(delta)}).`);
+    this.addLog('system', `${p.name} fikk stacken justert av verten til ${fc(n)} (${delta >= 0 ? '+' : ''}${fc(delta)}).`);
     this.maybeStartHand();
     this.touch();
   }
@@ -569,15 +569,15 @@ export class Table {
   start(hostId: string) {
     this.requireHost(hostId);
     if (this.status === 'running') return;
-    if (this.status === 'finished') throw new GameError('This game is over. Open a new table for a rematch.');
+    if (this.status === 'finished') throw new GameError('Spillet er over. Åpne et nytt bord for å spille igjen.');
     const wasPaused = this.status === 'paused';
     if (!wasPaused && this.players.filter((p) => p.status === 'seated' && p.stack > 0).length < 2) {
-      throw new GameError('You need at least two players with chips to start.');
+      throw new GameError('Minst to spillere må ha chips før spillet kan starte.');
     }
     this.status = 'running';
     if (this.rules.levelMinutes > 0) this.startClock();
     if (this.playingSince == null) this.playingSince = Date.now();
-    this.addLog('system', wasPaused ? 'Game resumed.' : 'Game started. Shuffling seats…');
+    this.addLog('system', wasPaused ? 'Spillet fortsetter.' : 'Spillet har startet. Trekker seter …');
     if (!wasPaused) {
       this.announceLevelStart();
       this.shuffleSeats();
@@ -608,7 +608,7 @@ export class Table {
       if (n < 3) this.later(STEP, () => step(n + 1));
       else this.later(STEP, () => {
         this.shuffling = 0;
-        this.addLog('system', `Seats are set: ${seated.slice().sort((a, b) => a.seat! - b.seat!).map((p) => p.name).join(', ')}. Shuffle up and deal.`);
+        this.addLog('system', `Spillere etter setenummer: ${seated.slice().sort((a, b) => a.seat! - b.seat!).map((p) => p.name).join(', ')}. Kortene deles ut.`);
         this.maybeStartHand();
         this.touch();
       });
@@ -618,7 +618,7 @@ export class Table {
 
   private announceLevelStart() {
     const l = this.levelAt(this.clock.levelIndex);
-    this.addLog('system', `Level ${this.clock.levelIndex + 1}: ${fc(l.sb)}/${fc(l.bb)}${l.ante ? ` ante ${fc(l.ante)}` : ''}.`);
+    this.addLog('system', `Nivå ${this.clock.levelIndex + 1} · ${fc(l.sb)}/${fc(l.bb)}${l.ante ? ` ante ${fc(l.ante)}` : ''}.`);
   }
 
   pause(hostId: string) {
@@ -631,7 +631,7 @@ export class Table {
     const h = this.hand;
     const midHand = !!h && !h.finished;
     if (h && midHand) this.freezeTurn(h);
-    this.addLog('system', midHand ? 'Host paused the game. The hand continues when the host resumes.' : 'Host paused the game.');
+    this.addLog('system', midHand ? 'Verten har satt spillet på pause. Hånden fortsetter når verten starter igjen.' : 'Verten har satt spillet på pause.');
     this.touch();
   }
 
@@ -674,11 +674,11 @@ export class Table {
   }
 
   claimHost(playerId: string) {
-    if (!this.canClaimHost(playerId)) throw new GameError('The host is still here. Ask them to make you host.');
+    if (!this.canClaimHost(playerId)) throw new GameError('Verten er fortsatt her. Be verten om å gi deg rollen.');
     const to = this.player(playerId)!;
     const from = this.players.find((p) => p.isHost);
     for (const p of this.players) p.isHost = p.id === to.id;
-    this.addLog('system', from ? `${to.name} took over as host while ${from.name} is away.` : `${to.name} is now the host.`);
+    this.addLog('system', from ? `${to.name} overtok som vert mens ${from.name} var borte.` : `${to.name} er nå vert.`);
     this.touch();
   }
 
@@ -703,16 +703,16 @@ export class Table {
     }
     if (this.clock.levelIndex > s.rules.levels.length - 1) this.clock.levelIndex = s.rules.levels.length - 1;
     if (oldMs !== s.rules.levelMinutes && this.clock.elapsedMs > this.phaseMs()) this.clock.elapsedMs = 0;
-    this.addLog('system', `Host updated the rules: ${s.rules.name}.`);
+    this.addLog('system', `Verten oppdaterte reglene til «${s.rules.name}».`);
     this.touch();
   }
 
   transferHost(hostId: string, playerId: string) {
     this.requireHost(hostId);
     const to = this.player(playerId);
-    if (!to) throw new GameError('Player not found.');
+    if (!to) throw new GameError('Fant ikke spilleren.');
     for (const p of this.players) p.isHost = p.id === to.id;
-    this.addLog('system', `${to.name} is now the host.`);
+    this.addLog('system', `${to.name} er nå vert.`);
     this.touch();
   }
 
@@ -754,7 +754,7 @@ export class Table {
     const tb = this.rules.timeBank;
     if (tb.enabled && tb.everyHands > 0 && tb.addSeconds > 0 && this.handNumber > 1 && (this.handNumber - 1) % tb.everyHands === 0) {
       for (const p of this.players) if (p.status === 'seated') p.timeBankMs = Math.min(tb.maxSeconds * 1000, p.timeBankMs + tb.addSeconds * 1000);
-      this.addLog('system', `Time banks topped up by ${tb.addSeconds}s.`);
+      this.addLog('system', `Alle fikk ${tb.addSeconds} s ekstra i tidsbanken.`);
     }
 
     const blinds = this.levelAt(this.clock.levelIndex);
@@ -769,7 +769,7 @@ export class Table {
       winners: null, finished: false, runout: false,
     };
     this.hand = h;
-    this.addLog('hand', `Hand #${h.number} · ${fc(blinds.sb)}/${fc(blinds.bb)}${blinds.ante ? ` · ante ${fc(blinds.ante)}` : ''} · dealer ${this.name(players.find((x) => x.seat === dealerSeat)!.id)}`);
+    this.addLog('hand', `Hånd nr. ${h.number} · ${fc(blinds.sb)}/${fc(blinds.bb)}${blinds.ante ? ` · ante ${fc(blinds.ante)}` : ''} · dealer ${this.name(players.find((x) => x.seat === dealerSeat)!.id)}`);
 
     // antes go straight to the pot
     if (blinds.ante > 0) {
@@ -790,7 +790,7 @@ export class Table {
       hp.contrib += a;
       if (p.stack === 0) hp.allIn = true;
       hp.lastAction = label;
-      this.addLog('action', `${p.name} posts ${label.toLowerCase()} ${fc(a)}`);
+      this.addLog('action', `${p.name} legger ${label.toLowerCase()} på ${fc(a)}`);
     };
     post(sbSeat, blinds.sb, 'SB');
     post(bbSeat, blinds.bb, 'BB');
@@ -865,7 +865,7 @@ export class Table {
       if (this.rules.timeBank.enabled && !away && bank > 0) {
         h.usingBank = true;
         h.bankStartedAt = Date.now();
-        this.addLog('action', `${p!.name} is using their time bank`);
+        this.addLog('action', `${p!.name} bruker tidsbanken sin`);
         this.armTurn(hp.id, bank, () => { if (p) p.timeBankMs = 0; h.usingBank = false; this.timeOut(); });
         this.touch();
       } else this.timeOut();
@@ -925,10 +925,10 @@ export class Table {
 
   act(playerId: string, type: string, amount = 0) {
     const h = this.hand;
-    if (!h || h.finished || h.toAct == null) throw new GameError('There is nothing to act on.');
+    if (!h || h.finished || h.toAct == null) throw new GameError('Du har ingen valg å ta akkurat nå.');
     const hp = h.players[h.toAct];
-    if (hp.id !== playerId) throw new GameError('It is not your turn.');
-    if (this.status === 'paused') throw new GameError('The game is paused.');
+    if (hp.id !== playerId) throw new GameError('Det er ikke din tur.');
+    if (this.status === 'paused') throw new GameError('Spillet er satt på pause.');
     this.applyAction(hp, type, amount);
     this.touch();
   }
@@ -949,7 +949,7 @@ export class Table {
       hp.contrib += a;
       if (p.stack === 0) hp.allIn = true;
     };
-    const suffix = timedOut ? ' (timed out)' : '';
+    const suffix = timedOut ? ' (tiden gikk ut)' : '';
 
     if (type === 'allin') {
       if (legal.canRaise && legal.maxRaiseTo > h.currentBet) { type = 'raise'; amount = legal.maxRaiseTo; }
@@ -963,28 +963,28 @@ export class Table {
         }
         hp.folded = true;
         hp.lastAction = 'Fold';
-        this.addLog('action', `${p.name} folds${suffix}`);
+        this.addLog('action', `${p.name} folder${suffix}`);
         break;
       case 'check':
-        if (!legal.canCheck) throw new GameError(`You need to call ${fc(legal.callAmount)} or fold.`);
+        if (!legal.canCheck) throw new GameError(`Velg call på ${fc(legal.callAmount)} eller fold.`);
         hp.lastAction = 'Check';
-        this.addLog('action', `${p.name} checks${suffix}`);
+        this.addLog('action', `${p.name} checker${suffix}`);
         break;
       case 'call': {
-        if (legal.callAmount === 0) { hp.lastAction = 'Check'; this.addLog('action', `${p.name} checks`); break; }
+        if (legal.callAmount === 0) { hp.lastAction = 'Check'; this.addLog('action', `${p.name} checker`); break; }
         pay(legal.callAmount);
         if (h.street === 'preflop') hp.vpip = true;
         hp.lastAction = hp.allIn ? 'All-in' : 'Call';
-        this.addLog('action', `${p.name} calls ${fc(legal.callAmount)}${hp.allIn ? ' and is all-in' : ''}`);
+        this.addLog('action', `${p.name} caller ${fc(legal.callAmount)}${hp.allIn ? ' og er all-in' : ''}`);
         break;
       }
       case 'raise':
       case 'bet': {
-        if (!legal.canRaise) throw new GameError('You cannot raise here.');
+        if (!legal.canRaise) throw new GameError('Du kan ikke raise nå.');
         let to = Math.round(Number(amount));
-        if (!Number.isFinite(to)) throw new GameError('Enter an amount.');
+        if (!Number.isFinite(to)) throw new GameError('Oppgi et beløp.');
         to = Math.min(to, legal.maxRaiseTo);
-        if (to < legal.minRaiseTo && to < legal.maxRaiseTo) throw new GameError(`The minimum is ${fc(legal.minRaiseTo)}.`);
+        if (to < legal.minRaiseTo && to < legal.maxRaiseTo) throw new GameError(`Minstebeløpet er ${fc(legal.minRaiseTo)}.`);
         const wasBet = h.currentBet === 0;
         const raiseSize = to - h.currentBet;
         pay(to - hp.bet);
@@ -995,11 +995,11 @@ export class Table {
         }
         h.currentBet = Math.max(h.currentBet, to);
         hp.lastAction = hp.allIn ? 'All-in' : wasBet ? 'Bet' : 'Raise';
-        this.addLog('action', `${p.name} ${wasBet ? 'bets' : 'raises to'} ${fc(to)}${hp.allIn ? ' (all-in)' : ''}`);
+        this.addLog('action', `${p.name} ${wasBet ? 'better' : 'raiser til'} ${fc(to)}${hp.allIn ? ' (all-in)' : ''}`);
         break;
       }
       default:
-        throw new GameError('Unknown action.');
+        throw new GameError('Ukjent handling.');
     }
     hp.acted = true;
     hp.raiseSeen = h.fullRaiseCount;
@@ -1031,7 +1031,7 @@ export class Table {
       if (!h.runout) {
         h.runout = true;
         for (const x of notFolded) x.shown = true;
-        this.addLog('hand', 'All in. Cards are turned over.');
+        this.addLog('hand', 'All-in. Kortene vises.');
       }
       h.equity = allInEquity(notFolded, h.board, h.players.filter(x => x.folded && x.shown).flatMap(x => x.hole));
       const boardLength = h.board.length;
@@ -1099,7 +1099,7 @@ export class Table {
     if (p) p.stack += total;
     for (const x of h.players) x.bet = 0;
     h.winners = [{ playerId: winner.id, amount: total, hand: null, cards: [] }];
-    this.addLog('hand', `${this.name(winner.id)} wins ${fc(total)}`);
+    this.addLog('hand', `${this.name(winner.id)} vinner ${fc(total)}`);
     this.finishHand(NEXT_HAND_DELAY);
   }
 
@@ -1112,7 +1112,8 @@ export class Table {
     const pots = this.computePots();
     const won = new Map<string, { amount: number; hand: string; cards: Card[] }>();
     // seat order starting left of the dealer for odd chips
-    const order = [...h.players].sort((a, b) => ((a.seat - h.dealerSeat + 100) % 100) - ((b.seat - h.dealerSeat + 100) % 100));
+    const dealerIndex = h.players.findIndex(p => p.seat === h.dealerSeat);
+    const order = [...h.players.slice(dealerIndex + 1), ...h.players.slice(0, dealerIndex + 1)];
     for (const pot of pots) {
       const elig = pot.eligible.filter((id) => values.has(id));
       if (!elig.length) continue;
@@ -1131,14 +1132,14 @@ export class Table {
     }
     for (const x of contenders) {
       const v = values.get(x.id)!;
-      this.addLog('hand', `${this.name(x.id)} shows ${x.hole.join(' ')} (${v.name})`);
+      this.addLog('hand', `${this.name(x.id)} viser ${x.hole.join(' ')} (${v.name})`);
     }
     h.winners = [];
     for (const [id, w] of won) {
       const p = this.player(id);
       if (p) p.stack += w.amount;
       h.winners.push({ playerId: id, amount: w.amount, hand: w.hand, cards: w.cards });
-      this.addLog('hand', `${this.name(id)} wins ${fc(w.amount)} with ${w.hand}`);
+      this.addLog('hand', `${this.name(id)} vinner ${fc(w.amount)} med ${w.hand}`);
     }
     this.finishHand(SHOWDOWN_DELAY);
   }
@@ -1169,7 +1170,7 @@ export class Table {
       const p = this.player(hp.id);
       if (p && p.status === 'seated' && p.stack === 0) {
         const offer = this.rebuyOffer(p);
-        this.addLog('system', offer?.allowed ? `${p.name} is out of chips and can rebuy.` : `${p.name} is out of chips.`);
+        this.addLog('system', offer?.allowed ? `${p.name} er tom for chips og kan gjøre rebuy.` : `${p.name} er tom for chips.`);
       }
     }
     if (this.isTournament()) this.checkEliminations(h);
@@ -1188,9 +1189,9 @@ export class Table {
   /** Voluntarily show cards after the hand (e.g. after winning uncontested). */
   show(playerId: string) {
     const hp = this.handPlayer(playerId);
-    if (!hp || !this.hand?.finished) throw new GameError('You can show your cards after the hand.');
+    if (!hp || !this.hand?.finished) throw new GameError('Du kan vise kortene dine etter hånden.');
     hp.shown = true;
-    this.addLog('hand', `${this.name(playerId)} shows ${hp.hole.join(' ')}`);
+    this.addLog('hand', `${this.name(playerId)} viser ${hp.hole.join(' ')}`);
     this.touch();
   }
 
@@ -1204,14 +1205,14 @@ export class Table {
   rabbitHunt(playerId: string, handNumber: number) {
     const h = this.hand;
     if (!h || h.number !== handNumber || !this.allowsRabbitHunt(playerId)) {
-      throw new GameError('Rabbit hunt is unavailable for this hand.');
+      throw new GameError('Rabbit hunt er ikke tilgjengelig for denne hånden.');
     }
     if (h.rabbitCards.length) return;
     const deck = [...h.deck];
     while (h.board.length + h.rabbitCards.length < 5) {
       h.rabbitCards.push(...drawCommunityCards(deck, h.board.length + h.rabbitCards.length));
     }
-    this.addLog('hand', `Rabbit hunt · hand #${h.number} · ${this.name(playerId)} reveals ${h.rabbitCards.join(' ')}`);
+    this.addLog('hand', `Rabbit hunt · hånd nr. ${h.number} · ${this.name(playerId)} viser ${h.rabbitCards.join(' ')}`);
     if (this.status === 'running') this.scheduleNextHand(NEXT_HAND_DELAY);
     this.touch();
   }
@@ -1225,7 +1226,7 @@ export class Table {
       if (p.place != null) continue;
       p.place = this.entrants().filter((x) => x.place == null).length;
       this.eliminated.push(p.id);
-      this.addLog('system', `${p.name} finishes in place ${p.place}.`);
+      this.addLog('system', `${p.name} ender på ${p.place}. plass.`);
     }
   }
 
@@ -1253,7 +1254,7 @@ export class Table {
       this.stopClock();
       if (this.playingSince != null) { this.playedMs = this.played(); this.playingSince = null; }
       if (this.nextHandTimer) { clearTimeout(this.nextHandTimer); this.nextHandTimer = null; }
-      this.addLog('system', `${w.name} wins the tournament!`);
+      this.addLog('system', `${w.name} vinner turneringen!`);
       changed = true;
     }
     return changed;
@@ -1380,6 +1381,6 @@ function sameSet(a: string[], b: string[]) {
 
 export function cleanName(name: string): string {
   const n = String(name ?? '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 18);
-  if (!n) throw new GameError('Enter a name.');
+  if (!n) throw new GameError('Skriv inn et navn.');
   return n;
 }

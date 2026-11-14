@@ -46,7 +46,7 @@ export function TopBar(p: Props) {
 
       <div className={`clock ${c.onBreak ? 'is-break' : ''} ${view.status === 'paused' ? 'is-paused' : ''}`} aria-live="polite">
         <div className="clock__now">
-          <span className="clock__level">{c.onBreak ? 'Break' : c.final ? `Level ${c.levelIndex + 1} · final` : timed ? `Level ${c.levelIndex + 1}` : 'Blinds'}</span>
+          <span className="clock__level">{c.onBreak ? 'Pause' : c.final ? `Nivå ${c.levelIndex + 1} · siste` : timed ? `Nivå ${c.levelIndex + 1}` : 'Blinds'}</span>
           <span className="clock__blinds">{blinds(c.level)}</span>
         </div>
         {timed && !c.final && (
@@ -54,15 +54,15 @@ export function TopBar(p: Props) {
             <span className="clock__bar" aria-hidden="true"><span style={{ transform: `scaleX(${frac})` }} /></span>
             <span className="clock__meta">
               <span className="clock__remaining">{view.status === 'waiting' ? formatClock(c.levelMs) : formatClock(remaining)}</span>
-              {c.next && <span className="clock__next">next {blinds(c.next)}</span>}
+              {c.next && <span className="clock__next">neste {blinds(c.next)}</span>}
             </span>
           </div>
         )}
-        {view.status === 'paused' && <span className="clock__flag">Paused</span>}
-        {view.status === 'finished' && <span className="clock__flag">Game over</span>}
+        {view.status === 'paused' && <span className="clock__flag">På pause</span>}
+        {view.status === 'finished' && <span className="clock__flag">Spillet er over</span>}
         {c.rebuyEndsInMs != null && (
           <span className={`clock__rebuy ${rebuyLeft === 0 ? 'is-closed' : ''}`}>
-            {rebuyLeft === 0 ? 'Rebuys closed' : <>Rebuys <b>{formatClock(rebuyLeft)}</b></>}
+            {rebuyLeft === 0 ? 'Rebuy-perioden er over' : <>Rebuys <b>{formatClock(rebuyLeft)}</b></>}
           </span>
         )}
       </div>
@@ -70,23 +70,23 @@ export function TopBar(p: Props) {
       <div className="topbar__tools">
         {isHost && (view.status === 'waiting' || view.status === 'paused') && (
           <button className="btn btn--act btn--sm" onClick={p.onStart} disabled={view.status === 'waiting' && view.players.filter((x) => x.status === 'seated').length < 2}>
-            <Play size={15} /> {view.status === 'paused' ? 'Resume' : 'Start game'}
+            <Play size={15} /> {view.status === 'paused' ? 'Fortsett' : 'Start spillet'}
           </button>
         )}
         {isHost && view.status === 'running' && (
           <button className="btn btn--quiet btn--sm" onClick={p.onPause}><Pause size={15} /> Pause</button>
         )}
         {p.watchers > 0 && (
-          <span className="topbar__watchers" title={`${p.watchers} ${p.watchers === 1 ? 'person is' : 'people are'} watching without a seat`}>
-            <Eye size={15} aria-hidden="true" /> {p.watchers}<span className="sr-only"> watching</span>
+          <span className="topbar__watchers" title={`${p.watchers} ${p.watchers === 1 ? 'person ser' : 'personer ser'} på uten å spille`}>
+            <Eye size={15} aria-hidden="true" /> {p.watchers}<span className="sr-only"> ser på</span>
           </span>
         )}
         <button className="btn btn--quiet btn--sm" onClick={p.onCopy}>
-          <Link2 size={15} /> {p.copied ? 'Link copied' : 'Invite'}
+          <Link2 size={15} /> {p.copied ? 'Lenken er kopiert' : 'Inviter'}
         </button>
         <span className="topbar__sep" aria-hidden="true" />
         {p.onPhone && (
-          <button className="iconbtn" onClick={p.onPhone} title="Continue on your phone">
+          <button className="iconbtn" onClick={p.onPhone} title="Fortsett på mobilen">
             <Smartphone size={18} />
           </button>
         )}
@@ -96,7 +96,7 @@ export function TopBar(p: Props) {
           onClick={p.onCam}
           disabled={!p.canMedia || p.mediaBusy}
           aria-pressed={p.camOn}
-          title={p.canMedia ? (p.camOn ? 'Turn camera off' : 'Turn camera on') : 'Take a seat to use your camera'}
+          title={p.canMedia ? (p.camOn ? 'Slå av kameraet' : 'Slå på kameraet') : 'Velg et sete for å bruke kameraet'}
         >
           {p.camOn ? <Camera size={18} /> : <CameraOff size={18} />}
         </button>
@@ -105,14 +105,14 @@ export function TopBar(p: Props) {
           onClick={p.onMic}
           disabled={!p.canMedia || p.mediaBusy}
           aria-pressed={p.micOn}
-          title={p.canMedia ? (p.micOn ? 'Mute microphone' : 'Unmute microphone') : 'Take a seat to use your microphone'}
+          title={p.canMedia ? (p.micOn ? 'Slå av mikrofonen' : 'Slå på mikrofonen') : 'Velg et sete for å bruke mikrofonen'}
         >
           {p.micOn ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
         </>}
-        <button className={`iconbtn ${p.drawerOpen ? 'is-on' : ''}`} onClick={p.onDrawer} aria-pressed={p.drawerOpen} title="Log, chat, ledger and settings">
+        <button className={`iconbtn ${p.drawerOpen ? 'is-on' : ''}`} onClick={p.onDrawer} aria-pressed={p.drawerOpen} title="Logg, chat, regnskap og innstillinger">
           <PanelRight size={18} />
-          {(p.unread > 0 || (isHost && pendingCount > 0)) && !p.drawerOpen && <span className="dot" aria-label="New activity" />}
+          {(p.unread > 0 || (isHost && pendingCount > 0)) && !p.drawerOpen && <span className="dot" aria-label="Ny aktivitet" />}
         </button>
       </div>
     </header>

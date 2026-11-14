@@ -59,7 +59,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
   const allInRaise = legal && raiseTo >= legal.maxRaiseTo;
 
   return (
-    <section className={`dock ${myTurn ? 'is-turn' : ''}`} aria-label="Your hand and actions">
+    <section className={`dock ${myTurn ? 'is-turn' : ''}`} aria-label="Din hånd og dine valg">
       <div className="dock__hand">
         <div className="dock__cards">
         {you.holeCards.length ? (
@@ -75,7 +75,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         </div>
         {you.madeHand && (
           <span className={`dock__made ${me?.folded ? 'is-folded' : ''}`} aria-live="polite">
-            {hand?.rabbitCards?.length ? `Would have had ${you.madeHand}` : you.madeHand}
+            {hand?.rabbitCards?.length ? `Du ville hatt ${you.madeHand}` : you.madeHand}
           </span>
         )}
       </div>
@@ -84,25 +84,25 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         {myTurn ? (
           <>
             <span className="dock__label">
-              {legal!.canCheck ? 'Your turn' : 'To call'}
-              {hand?.usingBank ? ' · on your time bank' : view.settings.rules.timeBank.enabled && me ? ` · bank ${Math.round(me.timeBankMs / 1000)}s` : ''}
+              {legal!.canCheck ? 'Din tur' : 'Beløp for call'}
+              {hand?.usingBank ? ' · bruker tidsbanken' : view.settings.rules.timeBank.enabled && me ? ` · tidsbank ${Math.round(me.timeBankMs / 1000)} s` : ''}
             </span>
-            <span className="dock__big">{legal!.canCheck ? 'Check or bet' : formatChips(legal!.callAmount)}</span>
+            <span className="dock__big">{legal!.canCheck ? 'Check eller bet' : formatChips(legal!.callAmount)}</span>
           </>
         ) : !seated ? (
           <>
-            <span className="dock__label">{me?.status === 'pending' ? 'Request sent' : 'Watching'}</span>
-            <span className="dock__mid">{me?.status === 'pending' ? 'The host will seat you shortly' : 'Pick an open seat to play'}</span>
+            <span className="dock__label">{me?.status === 'pending' ? 'Forespørsel sendt' : 'Tilskuer'}</span>
+            <span className="dock__mid">{me?.status === 'pending' ? 'Venter på godkjenning fra verten' : 'Velg et ledig sete for å spille'}</span>
           </>
         ) : me?.folded ? (
           <>
-            <span className="dock__label">Folded</span>
-            <span className="dock__mid">{actingName ? `${actingName} to act` : 'Next hand soon'}</span>
+            <span className="dock__label">Fold</span>
+            <span className="dock__mid">{actingName ? `${actingName} har tur` : 'Neste hånd starter snart'}</span>
           </>
         ) : hand && !hand.winners && actingName ? (
           <>
-            <span className="dock__label">{view.status === 'paused' ? 'Paused' : 'Waiting'}</span>
-            <span className="dock__mid">{hand.toActId === me?.id ? 'Your turn when the game resumes' : `${actingName} to act`}</span>
+            <span className="dock__label">{view.status === 'paused' ? 'På pause' : 'Venter'}</span>
+            <span className="dock__mid">{hand.toActId === me?.id ? 'Din tur når spillet fortsetter' : `${actingName} har tur`}</span>
           </>
         ) : (
           <>
@@ -118,7 +118,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
           <>
             {legal!.canRaise && (
               <div className="raise">
-                <div className="raise__presets" role="group" aria-label="Raise presets">
+                <div className="raise__presets" role="group" aria-label="Forhåndsvalg for raise">
                   <button className="chipbtn" onClick={() => setRaiseTo(legal!.minRaiseTo)}>Min</button>
                   <button className="chipbtn" onClick={() => setRaiseTo(clamp(potRaise(0.5)))}>½ pot</button>
                   <button className="chipbtn" onClick={() => setRaiseTo(clamp(potRaise(0.75)))}>¾ pot</button>
@@ -134,7 +134,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
                     step={Math.max(1, view.hand?.blinds.sb ?? 1)}
                     value={raiseTo}
                     onChange={(e) => setRaiseTo(clamp(Number(e.target.value)))}
-                    aria-label={isBet ? 'Bet amount' : 'Raise to'}
+                    aria-label={isBet ? 'Beløp for bet' : 'Raise til'}
                   />
                   <input
                     ref={inputRef}
@@ -144,7 +144,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
                     onChange={(e) => setRaiseTo(Number(e.target.value.replace(/\D/g, '')) || 0)}
                     onBlur={() => setRaiseTo(clamp(raiseTo))}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onAction('raise', clamp(raiseTo)); } }}
-                    aria-label="Amount"
+                    aria-label="Beløp"
                   />
                 </div>
               </div>
@@ -159,7 +159,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
               </button>
               {legal!.canRaise && (
                 <button className="btn btn--act btn--raise" disabled={busy || raiseTo < legal!.minRaiseTo && raiseTo < legal!.maxRaiseTo} onClick={() => onAction('raise', clamp(raiseTo))}>
-                  {allInRaise ? 'All-in' : isBet ? 'Bet' : 'Raise to'} {formatChips(clamp(raiseTo))}
+                  {allInRaise ? 'All-in' : isBet ? 'Bet' : 'Raise til'} {formatChips(clamp(raiseTo))}
                   <kbd>R</kbd>
                 </button>
               )}
@@ -168,16 +168,16 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         ) : seated ? (
           <div className="dock__side">
             {view.settings.rules.timeBank.enabled && me && (
-              <span className="dock__note">Time bank {Math.round(me.timeBankMs / 1000)}s</span>
+              <span className="dock__note">Tidsbank {Math.round(me.timeBankMs / 1000)} s</span>
             )}
-            {canShow && <button className="btn btn--quiet" onClick={onShow}>Show cards</button>}
+            {canShow && <button className="btn btn--quiet" onClick={onShow}>Vis kortene</button>}
             {rebuy?.allowed && <button className="btn btn--act" onClick={onRebuy}>Rebuy{rebuy.amount ? ` ${formatChips(rebuy.amount)}` : ''}</button>}
             {rebuy?.addOnAllowed && <button className="btn btn--act" onClick={onAddOn}>Add-on {formatChips(rebuy.addOnAmount)}</button>}
             {!rebuy?.allowed && me && me.stack === 0 && rebuy?.reason && <span className="dock__note">{rebuy.reason}</span>}
             <label className="toggle">
               <input type="checkbox" checked={!!me?.sittingOut} onChange={(e) => onSitOut(e.target.checked)} />
               <span className="toggle__track" aria-hidden="true" />
-              Sit out
+              Stå over
             </label>
           </div>
         ) : null}

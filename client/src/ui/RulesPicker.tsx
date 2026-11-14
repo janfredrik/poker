@@ -7,15 +7,15 @@ import { RulesEditor } from './RulesEditor';
 export function summarize(r: RuleSet): string {
   const l = r.levels[0];
   const blinds = `${formatChips(l.sb)}/${formatChips(l.bb)}`;
-  const parts = [r.levelMinutes > 0 ? `${blinds} start, up every ${r.levelMinutes} min` : `${blinds} fixed`, `${formatChips(r.startingStack)} chips`];
+  const parts = [r.levelMinutes > 0 ? `Blinds fra ${blinds}, ${r.levelMinutes} min per nivå` : `Faste blinds på ${blinds}`, `${formatChips(r.startingStack)} chips`];
   if (r.rebuy.enabled) {
     const lim = r.rebuy.maxPerPlayer ? `${r.rebuy.maxPerPlayer} rebuy${r.rebuy.maxPerPlayer > 1 ? 's' : ''}` : 'rebuys';
-    parts.push(r.rebuy.untilMinutes ? `${lim} in the first ${r.rebuy.untilMinutes} min` : r.rebuy.untilLevel && r.levelMinutes > 0 ? `${lim} through level ${r.rebuy.untilLevel}` : lim);
-  } else parts.push('no rebuys');
-  if (r.turnSeconds) parts.push(`${r.turnSeconds}s to act`);
+    parts.push(r.rebuy.untilMinutes ? `${lim} de første ${r.rebuy.untilMinutes} min` : r.rebuy.untilLevel && r.levelMinutes > 0 ? `${lim} til og med nivå ${r.rebuy.untilLevel}` : lim);
+  } else parts.push('ingen rebuys');
+  if (r.turnSeconds) parts.push(`${r.turnSeconds} s per tur`);
   if (r.rabbitHunt) parts.push('rabbit hunt');
-  if (r.timeBank.enabled && r.turnSeconds) parts.push(`${r.timeBank.startSeconds}s time bank`);
-  if (r.payout.enabled) parts.push(`${formatChips(r.payout.buyIn)} ${r.payout.currency} buy-in`);
+  if (r.timeBank.enabled && r.turnSeconds) parts.push(`tidsbank på ${r.timeBank.startSeconds} s`);
+  if (r.payout.enabled) parts.push(`buy-in på ${formatChips(r.payout.buyIn)} ${r.payout.currency}`);
   return parts.join(' · ');
 }
 
@@ -46,13 +46,13 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
         method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify(selected?.builtIn ? { ...value, id: '' } : value),
       });
-      if (!res.ok) throw new Error((await res.json()).error);
+      if (!res.ok) throw new Error();
       const saved = (await res.json()) as RuleSet;
       await load();
       onChange(saved);
-      setStatus(`Saved “${saved.name}”.`);
-    } catch (e) {
-      setStatus((e as Error).message || 'Could not save the rule set.');
+      setStatus(`Lagret «${saved.name}».`);
+    } catch {
+      setStatus('Kunne ikke lagre regelsettet. Prøv igjen.');
     }
   };
 
@@ -61,31 +61,31 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
     await fetch(`/api/rulesets/${encodeURIComponent(selected.id)}`, { method: 'DELETE' });
     await load();
     onChange(BUILT_IN_RULESETS[0]);
-    setStatus(`Deleted “${selected.name}”.`);
+    setStatus(`Slettet «${selected.name}».`);
   };
 
   return (
     <div className="picker">
       <div className="field field--wide">
-        <label className="field__label" htmlFor={selectId}>Rule set</label>
+        <label className="field__label" htmlFor={selectId}>Regelsett</label>
         <div className="picker__row">
           <select
             id={selectId}
             value={selected && !dirty ? value.id : '__edited'}
             onChange={(e) => { const s = sets.find((x) => x.id === e.target.value); if (s) { onChange(structuredClone(s)); setStatus(null); } }}
           >
-            {(!selected || dirty) && <option value="__edited">{value.name} (edited)</option>}
-            <optgroup label="Presets">
+            {(!selected || dirty) && <option value="__edited">{value.name} (endret)</option>}
+            <optgroup label="Forhåndsvalg">
               {sets.filter((s) => s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </optgroup>
             {sets.some((s) => !s.builtIn) && (
-              <optgroup label="Saved on this server">
+              <optgroup label="Lagret på denne serveren">
                 {sets.filter((s) => !s.builtIn).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </optgroup>
             )}
           </select>
           <button type="button" className="btn btn--quiet picker__edit" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Hide rules' : 'Edit rules'}
+            {open ? 'Skjul regler' : 'Rediger regler'}
           </button>
         </div>
         <span className="field__hint">{summarize(value)}</span>
@@ -95,11 +95,11 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
         <div className="picker__bar">
           {(dirty || open) && (
             <button type="button" className="btn btn--quiet btn--sm" onClick={save}>
-              <Save size={14} /> {selected && !selected.builtIn && !dirty ? 'Saved' : selected && !selected.builtIn ? 'Save changes' : 'Save as new rule set'}
+              <Save size={14} /> {selected && !selected.builtIn && !dirty ? 'Lagret' : selected && !selected.builtIn ? 'Lagre endringer' : 'Lagre som nytt regelsett'}
             </button>
           )}
           {selected && !selected.builtIn && (
-            <button type="button" className="btn btn--quiet btn--sm" onClick={remove}><Trash2 size={14} /> Delete</button>
+            <button type="button" className="btn btn--quiet btn--sm" onClick={remove}><Trash2 size={14} /> Slett</button>
           )}
           {status && <span className="picker__status" role="status">{status}</span>}
         </div>

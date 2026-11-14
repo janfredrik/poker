@@ -9,8 +9,8 @@ const SUIT_PATHS: Record<string, string> = {
 };
 
 const RANK_LABEL: Record<string, string> = { T: '10' };
-const SUIT_NAME: Record<string, string> = { s: 'spades', h: 'hearts', d: 'diamonds', c: 'clubs' };
-const RANK_NAME: Record<string, string> = { A: 'Ace', K: 'King', Q: 'Queen', J: 'Jack', T: 'Ten' };
+const SUIT_NAME: Record<string, string> = { s: 'spar', h: 'hjerter', d: 'ruter', c: 'kløver' };
+const RANK_NAME: Record<string, string> = { A: 'ess', K: 'konge', Q: 'dame', J: 'knekt', T: 'ti' };
 
 export function SuitIcon({ suit, className }: { suit: string; className?: string }) {
   return (
@@ -33,7 +33,7 @@ interface Props {
 export function PlayingCard({ card, size = 'md', faceDown, highlight, dim, empty, delay = 0 }: Props) {
   if (empty) return <span className={`card card--${size} card--slot`} aria-hidden="true" />;
   if (faceDown || !card) {
-    return <span className={`card card--${size} card--back`} style={{ animationDelay: `${delay}ms` }} aria-label="Face-down card" />;
+    return <span className={`card card--${size} card--back`} style={{ animationDelay: `${delay}ms` }} aria-label="Kort med baksiden opp" />;
   }
   const rank = card[0];
   const suit = card[1];
@@ -43,7 +43,7 @@ export function PlayingCard({ card, size = 'md', faceDown, highlight, dim, empty
       className={`card card--${size} card--face ${red ? 'is-red' : 'is-black'} ${highlight ? 'is-win' : ''} ${dim ? 'is-dim' : ''}`}
       style={{ animationDelay: `${delay}ms` }}
       role="img"
-      aria-label={`${RANK_NAME[rank] ?? rank} of ${SUIT_NAME[suit]}`}
+      aria-label={`${SUIT_NAME[suit]} ${RANK_NAME[rank] ?? rank}`}
     >
       <span className="card__rank">{RANK_LABEL[rank] ?? rank}</span>
       <SuitIcon suit={suit} className="card__suit" />

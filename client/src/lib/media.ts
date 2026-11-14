@@ -253,7 +253,7 @@ class MediaMesh {
 
   private async toggle(kind: Kind, on: boolean) {
     if (!navigator.mediaDevices?.getUserMedia) {
-      this.emit({ error: 'Camera and microphone need a secure (https) connection.' });
+      this.emit({ error: 'Kamera og mikrofon krever en sikker tilkobling (HTTPS).' });
       return;
     }
     this.emit({ busy: true, error: null });
@@ -264,10 +264,10 @@ class MediaMesh {
     } catch (e) {
       const name = (e as DOMException)?.name;
       const msg = name === 'NotAllowedError'
-        ? `${kind === 'video' ? 'Camera' : 'Microphone'} access was blocked. Allow it in the browser's address bar and try again.`
+        ? `Nettleseren har blokkert ${kind === 'video' ? 'kameraet' : 'mikrofonen'}. Gi tilgang i adressefeltet og prøv igjen.`
         : name === 'NotFoundError'
-          ? `No ${kind === 'video' ? 'camera' : 'microphone'} found on this device.`
-          : `Could not start the ${kind === 'video' ? 'camera' : 'microphone'}.`;
+          ? `Fant ikke ${kind === 'video' ? 'noe kamera' : 'noen mikrofon'} på denne enheten.`
+          : `Kunne ikke starte ${kind === 'video' ? 'kameraet' : 'mikrofonen'}.`;
       this.emit({ busy: false, error: msg });
     }
     this.report();

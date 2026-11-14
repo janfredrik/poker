@@ -12,7 +12,7 @@ export function formatResults(view: TableView): string {
     if (results.addOns) entries.push(`${results.addOns} add-on${results.addOns === 1 ? '' : 's'}`);
     lines.push(`${entries.join(' + ')} · ${formatChips(results.pool)} ${results.currency}`);
   }
-  lines.push('', 'Final standings');
+  lines.push('', 'Sluttresultater');
   const debtors: { name: string; amount: number }[] = [];
   const creditors: { name: string; amount: number }[] = [];
 
@@ -26,25 +26,25 @@ export function formatResults(view: TableView): string {
     const name = duplicate ? `${player.name} (#${player.place})` : player.name;
     if (net < 0) debtors.push({ name, amount: -net });
     if (net > 0) creditors.push({
-      name: player.id === view.you.playerId ? `me (${name})` : name,
+      name: player.id === view.you.playerId ? `meg (${name})` : name,
       amount: net,
     });
   }
 
   if (results) {
-    lines.push('', 'Settlement');
+    lines.push('', 'Oppgjør');
     const owed = debtors.reduce((sum, p) => sum + p.amount, 0);
     const due = creditors.reduce((sum, p) => sum + p.amount, 0);
     if (owed !== due || ranked.length !== results.entries || ranked.some((p) => p.net == null)) {
-      return [...lines, 'Check the ledger for the final settlement.'].join('\n');
+      return [...lines, 'Se regnskapet for endelig oppgjør.'].join('\n');
     }
-    if (!debtors.length) lines.push('All square.');
+    if (!debtors.length) lines.push('Ingen skylder noe.');
     let nextCreditor = 0;
     for (const debtor of debtors) {
       while (debtor.amount > 0) {
         const creditor = creditors[nextCreditor];
         const amount = Math.min(debtor.amount, creditor.amount);
-        lines.push(`${debtor.name} pays ${creditor.name} ${formatChips(amount)} ${results.currency}`);
+        lines.push(`${debtor.name} betaler ${creditor.name} ${formatChips(amount)} ${results.currency}`);
         debtor.amount -= amount;
         creditor.amount -= amount;
         if (creditor.amount === 0) nextCreditor++;

@@ -36,17 +36,11 @@ function RemoteAudio({ stream, name }: { stream: MediaStream; name: string }) {
   return <>
     <audio ref={ref} onPlaying={() => setBlocked(false)} />
     {blocked && (
-      <button className="seat__enable-audio" aria-label={`Enable sound for ${name}`} onClick={() => ref.current && play(ref.current)}>
-        <Volume2 size={14} aria-hidden="true" /> Enable sound
+      <button className="seat__enable-audio" aria-label={`Slå på lyd for ${name}`} onClick={() => ref.current && play(ref.current)}>
+        <Volume2 size={14} aria-hidden="true" /> Slå på lyd
       </button>
     )}
   </>;
-}
-
-export function ordinal(n: number) {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
 function initials(name: string) {
@@ -79,11 +73,11 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
       <div className="seat seat--empty">
         {canSit ? (
           <button className="seat__sit" onClick={() => onSit(seatNo)}>
-            <span className="seat__sit-label">Sit here</span>
-            <span className="seat__no">Seat {seatNo}</span>
+            <span className="seat__sit-label">Sitt her</span>
+            <span className="seat__no">Sete {seatNo}</span>
           </button>
         ) : (
-          <span className="seat__open"><span className="seat__no">Seat {seatNo}</span></span>
+          <span className="seat__open"><span className="seat__no">Sete {seatNo}</span></span>
         )}
       </div>
     );
@@ -92,12 +86,12 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
   const showVideo = player.camOn && stream && stream.getVideoTracks().some((track) => track.readyState === 'live');
   const cards = player.shownCards ?? (player.hasCards ? [null, null] : []);
   const out = player.status === 'seated' && player.stack === 0 && !player.inHand;
-  const state = player.place != null && player.stack === 0 ? `Out · ${ordinal(player.place)}`
-    : acting && usingBank ? 'Time bank'
-    : pending ? 'Waiting for host'
-    : !player.connected ? 'Disconnected'
-    : player.sittingOut ? 'Sitting out'
-    : out ? 'Out of chips'
+  const state = player.place != null && player.stack === 0 ? `Ute · ${player.place}. plass`
+    : acting && usingBank ? 'Tidsbank'
+    : pending ? 'Venter på verten'
+    : !player.connected ? 'Frakoblet'
+    : player.sittingOut ? 'Står over'
+    : out ? 'Tom for chips'
     : player.allIn ? 'All-in'
     : player.lastAction;
 
@@ -121,17 +115,17 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
           <span className="seat__avatar" aria-hidden="true">{initials(player.name)}</span>
         )}
         <span className="seat__badges">
-          {player.isHost && <span className="badge" title="Host"><Crown size={12} strokeWidth={2.4} /></span>}
-          {!player.connected && <span className="badge" title="Disconnected"><WifiOff size={12} strokeWidth={2.4} /></span>}
+          {player.isHost && <span className="badge" title="Vert"><Crown size={12} strokeWidth={2.4} /></span>}
+          {!player.connected && <span className="badge" title="Frakoblet"><WifiOff size={12} strokeWidth={2.4} /></span>}
           {player.bot && <span className="badge" title="Bot"><Bot size={12} strokeWidth={2.4} /></span>}
-          {player.connected && !player.bot && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Muted"><MicOff size={12} strokeWidth={2.4} /></span>}
+          {player.connected && !player.bot && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Mikrofon av"><MicOff size={12} strokeWidth={2.4} /></span>}
         </span>
       </button>
       {player.status === 'seated' && <SeatReaction playerId={player.id} name={player.name} />}
       {player.equity != null && (
-        <div className="seat__equity" title="Main pot equity · tied hands share the pot">
-          <span className="sr-only">{player.name}, main pot equity </span>
-          {Number(player.equity.toFixed(1))}% <span aria-hidden="true">equity</span>
+        <div className="seat__equity" title="Equity i main pot · ved like hender deles potten">
+          <span className="sr-only">{player.name}, equity i main pot </span>
+          {player.equity.toLocaleString('nb-NO', { maximumFractionDigits: 1 })}% <span aria-hidden="true">equity</span>
         </div>
       )}
       {!isYou && stream && stream.getAudioTracks().length > 0 && <RemoteAudio stream={stream} name={player.name} />}
@@ -153,12 +147,12 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         </span>
       )}
       <div className="seat__plate">
-        <span className="seat__name">{player.name}{isYou && <span className="seat__you"> (you)</span>}</span>
+        <span className="seat__name">{player.name}{isYou && <span className="seat__you"> (du)</span>}</span>
         <span className="seat__stack">{formatChips(player.stack)}</span>
       </div>
       <div className="seat__meta">
         {winner ? (
-          <span className="seat__tag seat__tag--win">Wins {formatChips(winner.amount)}{winner.hand ? ` · ${winner.hand}` : ''}</span>
+          <span className="seat__tag seat__tag--win">Vinner{formatChips(winner.amount)}{winner.hand ? ` · ${winner.hand}` : ''}</span>
         ) : state ? (
           <span className={`seat__tag ${player.folded ? 'seat__tag--fold' : ''}`}>{state}</span>
         ) : null}

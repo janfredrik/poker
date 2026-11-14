@@ -37,7 +37,7 @@ A self-hosted, private alternative to PokerNow for home games with friends. The 
 - No accounts or passwords; identity is a per-browser token tied to a seat.
 - Must work behind nginx (WebSocket upgrade) on a subpath-free hostname.
 - Play money only. No payments or gambling integration. The app may calculate the friends' agreed settlement (buy-in, rebuys, who gets what) but never moves or holds money.
-- UI language: English, using standard poker terminology.
+- UI language: Norwegian Bokmål, using established English poker terminology.
 - Up to 9 seats per table.
 - Players are mostly on laptops/desktops; phones must work but are secondary.
 - Faces matter: video is part of the table, not a hidden extra.

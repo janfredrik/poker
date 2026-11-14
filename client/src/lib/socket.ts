@@ -7,11 +7,11 @@ type AckRes<T> = { ok: true; data?: T } | { ok: false; error: string };
 /** Emit with acknowledgement; rejects with the server's human-readable error. */
 export function call<T = unknown>(event: string, payload?: unknown): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('The server did not answer. Check your connection.')), 8000);
+    const timer = setTimeout(() => reject(new Error('Serveren svarte ikke. Sjekk tilkoblingen din.')), 8000);
     socket.emit(event, payload, (res: AckRes<T>) => {
       clearTimeout(timer);
       if (res?.ok) resolve(res.data as T);
-      else reject(new Error(res?.error ?? 'Something went wrong.'));
+      else reject(new Error(res?.error ?? 'Noe gikk galt.'));
     });
   });
 }

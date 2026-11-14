@@ -30,28 +30,28 @@ export function PhoneSheet({ tableId, camOn, onClose }: { tableId: string; camOn
 
   return (
     <div className="sheet phone">
-      <h2 className="sheet__title">Continue on your phone</h2>
-      <div className="phone__choice" role="radiogroup" aria-label="Camera">
+      <h2 className="sheet__title">Fortsett på mobilen</h2>
+      <div className="phone__choice" role="radiogroup" aria-label="Kamera">
         <button type="button" role="radio" aria-checked={keepCam} className={keepCam ? 'is-on' : ''} onClick={() => setKeepCam(true)}>
-          <b>Camera stays here</b>
-          <span>Play from the phone, this computer keeps showing your face{camOn ? '' : ' (turn the camera on here)'}.</span>
+          <b>Behold kameraet her</b>
+          <span>Spill på mobilen og bruk kameraet på denne maskinen{camOn ? '' : ' (slå på kameraet her)'}.</span>
         </button>
         <button type="button" role="radio" aria-checked={!keepCam} className={!keepCam ? 'is-on' : ''} onClick={() => setKeepCam(false)}>
-          <b>Move everything</b>
-          <span>The phone takes over camera and mic. This screen steps aside.</span>
+          <b>Flytt alt til mobilen</b>
+          <span>Mobilen overtar kamera og mikrofon. Denne skjermen kobles fra bordet.</span>
         </button>
       </div>
       <div className="phone__qr" aria-live="polite">
         {error ? <p className="phone__err">{error}</p>
-          : svg ? <span dangerouslySetInnerHTML={{ __html: svg }} role="img" aria-label="QR code that opens your seat on a phone" />
-            : <span className="phone__wait">Making a code…</span>}
+          : svg ? <span dangerouslySetInnerHTML={{ __html: svg }} role="img" aria-label="QR-kode som åpner setet ditt på mobilen" />
+            : <span className="phone__wait">Lager QR-kode …</span>}
       </div>
       <p className="field__hint">
-        Scan with the phone camera. The code works once and lasts 5 minutes.
-        {local && <><br /><b>This page is on localhost, which a phone cannot open.</b> Open it with the computer's network address first.</>}
+        Skann med mobilkameraet. Koden kan brukes én gang og er gyldig i fem minutter.
+        {local && <><br /><b>Mobilen kan ikke åpne denne siden via localhost.</b> Åpne først siden med datamaskinens nettverksadresse.</>}
       </p>
       <div className="sheet__actions">
-        <button type="button" className="btn btn--quiet" onClick={onClose}>Close</button>
+        <button type="button" className="btn btn--quiet" onClick={onClose}>Lukk</button>
       </div>
     </div>
   );

@@ -12,11 +12,11 @@ function Night({ night }: { night: SeasonNight }) {
   return <details className="season__night">
     <summary>
       <strong>{night.name}</strong>
-      <time dateTime={date.toISOString()}>{date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</time>
+      <time dateTime={date.toISOString()}>{date.toLocaleDateString('nb-NO', { day: 'numeric', month: 'short' })}</time>
     </summary>
     <table className="ledger">
-      <caption className="sr-only">{night.name} final standings</caption>
-      <thead><tr><th>Place / Player</th>{night.currency != null && <><th>Paid</th><th>Prize</th><th>Net ({night.currency})</th></>}</tr></thead>
+      <caption className="sr-only">Sluttresultater for {night.name}</caption>
+      <thead><tr><th>Plass / spiller</th>{night.currency != null && <><th>Innbetalt</th><th>Premie</th><th>Netto ({night.currency})</th></>}</tr></thead>
       <tbody>{night.players.map((p) => <tr key={p.id}>
         <th scope="row">{p.place}. {p.name}</th>
         {night.currency != null && <><td>{p.paid == null ? '—' : formatChips(p.paid)}</td><td>{formatChips(p.prize)}</td><Net amount={p.net} /></>}
@@ -30,8 +30,8 @@ function Standings({ nights }: { nights: SeasonNight[] }) {
   return <>{currencies.map((currency) => {
     const rows = seasonStandings(nights.filter((n) => n.currency === currency));
     return <table className="ledger" key={JSON.stringify(currency)}>
-      <caption className={currencies.length === 1 ? 'sr-only' : 'season__caption'}>{currency == null ? 'Games without payouts' : `Standings in ${currency}`}</caption>
-      <thead><tr><th>Player</th><th>Games</th><th>Wins</th>{currency != null && <th>Net ({currency})</th>}</tr></thead>
+      <caption className={currencies.length === 1 ? 'sr-only' : 'season__caption'}>{currency == null ? 'Spill uten premier' : `Sammenlagt i ${currency}`}</caption>
+      <thead><tr><th>Spiller</th><th>Spill</th><th>Seire</th>{currency != null && <th>Netto ({currency})</th>}</tr></thead>
       <tbody>{rows.map((p) => <tr key={p.key}>
         <th scope="row">{p.name}</th><td>{p.games}</td><td>{p.wins}</td>{currency != null && <Net amount={p.net} />}
       </tr>)}</tbody>
@@ -40,11 +40,11 @@ function Standings({ nights }: { nights: SeasonNight[] }) {
 }
 
 function PlayerStatsTable({ nights }: { nights: SeasonNight[] }) {
-  const rows = seasonStandings(nights).sort((a, b) => b.stats.hands - a.stats.hands || a.name.localeCompare(b.name));
+  const rows = seasonStandings(nights).sort((a, b) => b.stats.hands - a.stats.hands || a.name.localeCompare(b.name, 'nb'));
   return <>
-    <div className="season__scroll" tabIndex={0} role="region" aria-label="Player statistics">
+    <div className="season__scroll" tabIndex={0} role="region" aria-label="Spillerstatistikk">
       <table className="ledger">
-        <thead><tr><th>Player</th><th>Hands</th><th>VPIP</th><th>PFR</th><th>Showdowns won</th><th>Biggest pot (chips)</th></tr></thead>
+        <thead><tr><th>Spiller</th><th>Hender</th><th>VPIP</th><th>PFR</th><th>Vunne showdowns</th><th>Største pott (chips)</th></tr></thead>
         <tbody>{rows.map(({ key, name, stats: s }) => <tr key={key}>
           <th scope="row">{name}</th><td>{formatChips(s.hands)}</td>
           <td>{s.hands ? `${Math.round(100 * s.vpipHands / s.hands)}%` : '—'}</td>
@@ -53,7 +53,7 @@ function PlayerStatsTable({ nights }: { nights: SeasonNight[] }) {
         </tr>)}</tbody>
       </table>
     </div>
-    <p className="drawer__note">VPIP is the share of tracked hands where a player put chips in voluntarily before the flop. PFR is the share where they raised before the flop. A split showdown counts once for each winner. Biggest pot is the most chips a player collected in one hand, excluding uncalled bets.</p>
+    <p className="drawer__note">VPIP viser hvor ofte en spiller frivillig la chips i potten før flop. PFR viser hvor ofte spilleren raiset før flop. Begge andelene beregnes ut fra registrerte hender. Ved delt showdown får hver vinner én seier. Største pott er det høyeste antallet chips en spiller vant i én hånd, uten den delen av en bet som ingen callet.</p>
   </>;
 }
 
@@ -84,27 +84,27 @@ export function Season() {
   const games = nights?.filter((n) => n.year === selected) ?? [];
   return <main className="lobby">
     <a className="wordmark lobby__mast" href="/">Poker</a>
-    <a className="season__nav" href="/">Back to lobby</a>
+    <a className="season__nav" href="/">Tilbake til lobbyen</a>
     <div className="lobby__stage season">
       <header className="season__head">
-        <h1>Season standings</h1>
-        {selected && <label className="field"><span className="sr-only">Season</span>
-          <select aria-label="Season" value={selected} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y}>{y}</option>)}</select>
+        <h1>Sesongoversikt</h1>
+        {selected && <label className="field"><span className="sr-only">Sesong</span>
+          <select aria-label="Sesong" value={selected} onChange={(e) => setYear(Number(e.target.value))}>{years.map((y) => <option key={y}>{y}</option>)}</select>
         </label>}
       </header>
-      {error ? <div role="alert"><p>Couldn’t load the season results.</p><button className="btn btn--quiet" onClick={() => { setError(false); setAttempt(attempt + 1); }}>Try again</button></div>
-        : !nights ? <p role="status">Loading season results…</p>
-        : !games.length ? <p>The first finished tournament will appear here.</p>
+      {error ? <div role="alert"><p>Kunne ikke hente sesongresultatene.</p><button className="btn btn--quiet" onClick={() => { setError(false); setAttempt(attempt + 1); }}>Prøv igjen</button></div>
+        : !nights ? <p role="status">Henter sesongresultater …</p>
+        : !games.length ? <p>Den første turneringen vises her når den er ferdigspilt.</p>
         : <>
-          <section className="season__section" aria-label="Season totals">
-            <div className="seg" role="group" aria-label="Season view">
-              <button aria-pressed={!stats} onClick={() => setStats(false)}>Standings</button>
-              <button aria-pressed={stats} onClick={() => setStats(true)}>Player stats</button>
+          <section className="season__section" aria-label="Sammenlagt for sesongen">
+            <div className="seg" role="group" aria-label="Sesongvisning">
+              <button aria-pressed={!stats} onClick={() => setStats(false)}>Sammenlagt</button>
+              <button aria-pressed={stats} onClick={() => setStats(true)}>Spillerstatistikk</button>
             </div>
             {stats ? <PlayerStatsTable nights={games} /> : <Standings nights={games} />}
           </section>
           <section className="season__section">
-            <h2>Game nights</h2>
+            <h2>Spillekvelder</h2>
             {games.map((night) => <Night key={night.id} night={night} />)}
           </section>
         </>}

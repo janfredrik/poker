@@ -11,12 +11,12 @@ export const MAX_DEMO_BOTS = 8;
 export function createDemoTable(hostName: unknown, botCount: unknown): { table: Table; hostToken: string } {
   const bots = Math.min(MAX_DEMO_BOTS, Math.max(1, Math.round(Number(botCount)) || 3));
   const rules = structuredClone(BUILT_IN_RULESETS.find((r) => r.id === 'cash-10-20') ?? BUILT_IN_RULESETS[0]);
-  const t = new Table({ name: 'Demo table', maxSeats: 9, requireApproval: false, rules });
+  const t = new Table({ name: 'Demobord', maxSeats: 9, requireApproval: false, rules });
   t.demo = true;
-  let name = 'You';
+  let name = 'Du';
   try { name = cleanName(String(hostName ?? '')); } catch { /* keep the default */ }
   const host = t.createPlayer(name, true);
-  t.addLog('system', `${host.name} opened a demo table against ${bots} bot${bots === 1 ? '' : 's'}.`);
+  t.addLog('system', `${host.name} åpnet et demobord med ${bots} ${bots === 1 ? 'bot' : 'bots'}.`);
   t.requestSeat(host, 1, host.name, rules.startingStack);
   const names = BOT_NAMES.filter((n) => n.toLowerCase() !== host.name.toLowerCase());
   // spread the bots around the table

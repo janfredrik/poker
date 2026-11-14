@@ -55,5 +55,5 @@ export function seasonStandings(nights: SeasonNight[]) {
       totals.set(key, row);
     });
   }
-  return [...totals.values()].sort((a, b) => b.net - a.net || b.wins - a.wins || a.name.localeCompare(b.name));
+  return [...totals.values()].sort((a, b) => b.net - a.net || b.wins - a.wins || a.name.localeCompare(b.name, 'nb'));
 }

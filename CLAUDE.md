@@ -54,5 +54,5 @@ One Docker image (`Dockerfile`) plus a coturn service in `docker-compose.yml`, b
 
 ## Conventions
 
-- UI copy is English with standard poker terminology.
+- UI copy is in Norwegian Bokmål with established English poker terminology.
 - Commit messages are a single sentence describing the user-visible change (e.g. "Let players continue on their phone by scanning a QR code").

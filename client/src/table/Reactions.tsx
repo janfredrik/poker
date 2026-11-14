@@ -32,10 +32,10 @@ export function ReactionPicker() {
       if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
     }}>
       <button ref={trigger} className="chipbtn reactions__trigger" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <Smile size={16} aria-hidden="true" /> React
+        <Smile size={16} aria-hidden="true" /> Reager
       </button>
       {open && (
-        <div className="reactions__choices" role="group" aria-label="Quick reactions">
+        <div className="reactions__choices" role="group" aria-label="Hurtigreaksjoner">
           {(Object.keys(reactions) as Reaction[]).map((emoji) => (
             <button key={emoji} aria-label={reactions[emoji]} title={reactions[emoji]} onClick={() => {
               socket.volatile.emit('reaction', emoji);
@@ -71,7 +71,7 @@ export function SeatReaction({ playerId, name }: { playerId: string; name: strin
     <span className="seat__reaction" role="status">
       {current && <span key={current.sequence} className="seat__reaction-bubble">
         <span aria-hidden="true">{current.emoji}</span>
-        <span className="sr-only">{name} reacted: {reactions[current.emoji]}</span>
+        <span className="sr-only">{name} reagerte med {reactions[current.emoji]}</span>
       </span>}
     </span>
   );

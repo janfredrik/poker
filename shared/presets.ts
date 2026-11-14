@@ -20,7 +20,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   {
     id: 'friday-300',
     rabbitHunt: false,
-    name: 'Standard tournament',
+    name: 'Standardturnering',
     builtIn: true,
     startingStack: 2000,
     levelMinutes: 20,
@@ -57,7 +57,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   {
     id: 'home-tourney',
     rabbitHunt: false,
-    name: 'Home tournament (15 min levels)',
+    name: 'Hjemmeturnering (15 min per nivå)',
     builtIn: true,
     startingStack: 5000,
     levelMinutes: 15,
@@ -74,7 +74,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   {
     id: 'turbo',
     rabbitHunt: false,
-    name: 'Turbo (8 min levels)',
+    name: 'Turbo (8 min per nivå)',
     builtIn: true,
     startingStack: 3000,
     levelMinutes: 8,
@@ -91,7 +91,7 @@ export const BUILT_IN_RULESETS: RuleSet[] = [
   {
     id: 'freezeout',
     rabbitHunt: false,
-    name: 'Freezeout (20 min, no rebuys)',
+    name: 'Freezeout (20 min, uten rebuys)',
     builtIn: true,
     startingStack: 10000,
     levelMinutes: 20,
@@ -123,7 +123,7 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
     });
   return {
     id: String(r.id || 'custom').slice(0, 64),
-    name: String(r.name || 'Custom rules').slice(0, 60),
+    name: String(r.name || 'Egne regler').slice(0, 60),
     builtIn: false,
     rabbitHunt: r.rabbitHunt === true,
     startingStack: int(r.startingStack, 1, 1e9, 2000),
@@ -165,7 +165,7 @@ export function sanitizeRules(input: Partial<RuleSet> | undefined, fallback: Rul
 }
 
 export function formatChips(n: number): string {
-  return Math.round(n).toLocaleString('en-US');
+  return Math.round(n).toLocaleString('nb-NO');
 }
 
 export function formatClock(ms: number): string {

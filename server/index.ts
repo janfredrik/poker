@@ -74,7 +74,7 @@ app.post('/api/rulesets', (req, res) => {
   catch (e) { res.status(400).json({ error: String((e as Error).message) }); }
 });
 app.delete('/api/rulesets/:id', (req, res) => {
-  if (BUILT_IN_RULESETS.some((b) => b.id === req.params.id)) { res.status(400).json({ error: 'Built-in rule sets cannot be deleted.' }); return; }
+  if (BUILT_IN_RULESETS.some((b) => b.id === req.params.id)) { res.status(400).json({ error: 'Innebygde regelsett kan ikke slettes.' }); return; }
   deleteRuleSet(req.params.id);
   res.json({ ok: true });
 });
@@ -127,7 +127,7 @@ function guard<T>(ack: Ack<T> | undefined, fn: () => T | void) {
     ack?.({ ok: true, data: data as T });
   } catch (e) {
     if (!(e instanceof GameError)) console.error(e);
-    ack?.({ ok: false, error: e instanceof GameError ? e.message : 'Something went wrong on the server.' });
+    ack?.({ ok: false, error: e instanceof GameError ? e.message : 'Noe gikk galt på serveren.' });
   }
 }
 
@@ -155,13 +155,13 @@ io.on('connection', (raw) => {
   const s = raw as S;
   const table = () => {
     const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
-    if (!t) throw new GameError('This table no longer exists.');
+    if (!t) throw new GameError('Bordet finnes ikke lenger.');
     return t;
   };
   const me = () => {
     const t = table();
     const p = t.player(s.data.playerId);
-    if (!p) throw new GameError('Take a seat first.');
+    if (!p) throw new GameError('Velg et sete ved bordet først.');
     return { t, p };
   };
   const attach = (t: Table, playerId: string | undefined) => {
@@ -185,18 +185,18 @@ io.on('connection', (raw) => {
   });
 
   s.on('table:create', (input: { settings: Partial<TableSettings>; hostName: string }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
-    if (tables.size > 500) throw new GameError('This server has too many tables open.');
+    if (tables.size > 500) throw new GameError('Det er for mange åpne bord på serveren.');
     const settings = sanitizeSettings(input?.settings ?? {});
     const t = new Table(settings);
     register(t);
     const host = t.createPlayer(cleanName(input?.hostName), true);
-    t.addLog('system', `${host.name} opened the table.`);
+    t.addLog('system', `${host.name} åpnet bordet.`);
     saveTable(t, true);
     return { tableId: t.id, token: host.token };
   }));
 
   s.on('demo:create', (input: { name?: string; bots?: number }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
-    if (tables.size > 500) throw new GameError('This server has too many tables open.');
+    if (tables.size > 500) throw new GameError('Det er for mange åpne bord på serveren.');
     const { table: t, hostToken } = createDemoTable(input?.name, input?.bots);
     register(t);
     return { tableId: t.id, token: hostToken };
@@ -204,14 +204,14 @@ io.on('connection', (raw) => {
 
   s.on('table:join', (input: { tableId: string; token?: string; handoff?: string }, ack: Ack<{ token: string; keepCam: boolean } | undefined>) => guard(ack, () => {
     const t = tables.get(String(input?.tableId ?? ''));
-    if (!t) throw new GameError('No table with that link. It may have been closed.');
+    if (!t) throw new GameError('Fant ikke bordet. Det kan ha blitt stengt.');
     let handed: { token: string; keepCam: boolean } | undefined;
     let playerId = t.byToken(input?.token)?.id;
     if (input?.handoff) {
       const h = handoffs.get(String(input.handoff));
       handoffs.delete(String(input.handoff));
       const p = h && h.tableId === t.id && h.expires > Date.now() ? t.player(h.playerId) : undefined;
-      if (!p) throw new GameError('That QR code has expired. Make a new one on the other screen.');
+      if (!p) throw new GameError('QR-koden har utløpt. Lag en ny på den andre skjermen.');
       playerId = p.id;
       handed = { token: p.token, keepCam: h!.keepCam };
     }
@@ -238,7 +238,7 @@ io.on('connection', (raw) => {
     const { t, p } = me();
     const now = Date.now();
     for (const [k, h] of handoffs) if (h.expires <= now || (h.tableId === t.id && h.playerId === p.id)) handoffs.delete(k);
-    if (handoffs.size > 2000) throw new GameError('Too many pending QR codes. Try again in a minute.');
+    if (handoffs.size > 2000) throw new GameError('Det er for mange aktive QR-koder. Prøv igjen om et minutt.');
     const code = randomBytes(16).toString('base64url');
     handoffs.set(code, { tableId: t.id, playerId: p.id, keepCam: !!input?.keepCam, expires: now + HANDOFF_MS });
     return { code, expiresInMs: HANDOFF_MS };
@@ -305,7 +305,7 @@ io.on('connection', (raw) => {
   }));
   s.on('host:close', (_: unknown, ack: Ack) => guard(ack, () => {
     const { t, p } = me();
-    if (!p.isHost) throw new GameError('Only the host can close the table.');
+    if (!p.isHost) throw new GameError('Bare verten kan stenge bordet.');
     if (!t.demo) archiveResult(t);
     io.to(t.id).emit('table:closed');
     t.dispose();

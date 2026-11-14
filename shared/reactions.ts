@@ -1,10 +1,10 @@
 export const reactions = {
-  '👏': 'Nice hand',
-  '😂': 'Laugh',
-  '😮': 'Wow',
-  '👍': 'Thumbs up',
-  '😅': 'Phew',
-  '❤️': 'Love it',
+  '👏': 'Fin hånd',
+  '😂': 'Latter',
+  '😮': 'Oi',
+  '👍': 'Tommel opp',
+  '😅': 'Puh',
+  '❤️': 'Elsker det',
 } as const;
 
 export type Reaction = keyof typeof reactions;

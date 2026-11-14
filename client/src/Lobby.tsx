@@ -7,7 +7,7 @@ import { PlayingCard } from './table/Card';
 
 export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [name, setName] = useState(prefs.get('name'));
-  const [tableName, setTableName] = useState(prefs.get('tableName', 'Friday game'));
+  const [tableName, setTableName] = useState(prefs.get('tableName', 'Fredagspoker'));
   const [rules, setRules] = useState<RuleSet>(structuredClone(BUILT_IN_RULESETS.find((r) => r.id === 'friday-300') ?? BUILT_IN_RULESETS[0]));
   const [approval, setApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
     setDemoError(null);
     setDemoBusy(true);
     try {
-      const res = await call<{ tableId: string; token: string }>('demo:create', { name: name.trim() || 'You', bots });
+      const res = await call<{ tableId: string; token: string }>('demo:create', { name: name.trim() || 'Du', bots });
       if (name.trim()) prefs.set('name', name.trim());
       tokens.set(res.tableId, res.token);
       navigate(`/t/${res.tableId}`);
@@ -34,7 +34,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const create = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) { setError('Enter your name so friends know who is hosting.'); return; }
+    if (!name.trim()) { setError('Skriv inn navnet ditt så vennene dine ser hvem som er vert.'); return; }
     setBusy(true);
     try {
       const res = await call<{ tableId: string; token: string }>('table:create', {
@@ -53,12 +53,12 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   return (
     <main className="lobby">
       <a className="wordmark lobby__mast" href="/">Poker</a>
-      <a className="season__nav" href="/season">Season standings</a>
+      <a className="season__nav" href="/season">Sesongoversikt</a>
       <div className="lobby__stage">
         <div className="lobby__lamp" aria-hidden="true" />
         <header className="lobby__head">
-          <h1 className="lobby__title">Deal a table <span>for tonight</span></h1>
-          <p className="lobby__lede">Play poker with your friends. Set the rules, share the link, and see everyone's face at the table.</p>
+          <h1 className="lobby__title">Inviter til <span>poker i kveld</span></h1>
+          <p className="lobby__lede">Velg regler, del lenken og spill poker med vennene dine på video.</p>
         </header>
 
       <form className="lobby__card" onSubmit={create}>
@@ -69,11 +69,11 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
         </div>
         <div className="lobby__row">
           <label className="field">
-            <span className="field__label">Your name</span>
+            <span className="field__label">Ditt navn</span>
             <input value={name} onChange={(e) => setName(e.target.value)} maxLength={18} autoComplete="nickname" autoFocus={!name} placeholder="Jani" />
           </label>
           <label className="field">
-            <span className="field__label">Table name</span>
+            <span className="field__label">Bordnavn</span>
             <input value={tableName} onChange={(e) => setTableName(e.target.value)} maxLength={40} />
           </label>
         </div>
@@ -83,29 +83,29 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
         <label className="toggle">
           <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} />
           <span className="toggle__track" aria-hidden="true" />
-          Players need my approval to join
+          Jeg vil godkjenne spillere før de får et sete
         </label>
 
         {error && <p className="form-error" role="alert">{error}</p>}
 
         <div className="lobby__submit">
-          <button className="btn btn--act btn--lg" disabled={busy}>{busy ? 'Opening table…' : 'Open the table'}</button>
+          <button className="btn btn--act btn--lg" disabled={busy}>{busy ? 'Åpner bordet …' : 'Åpne bordet'}</button>
         </div>
       </form>
 
       <section className="demo" aria-labelledby="demo-title">
         <div className="demo__text">
-          <h2 className="demo__title" id="demo-title">Just want to try it?</h2>
-          <p className="demo__lede">Play a few hands against bots.</p>
+          <h2 className="demo__title" id="demo-title">Vil du prøve først?</h2>
+          <p className="demo__lede">Spill noen hender mot bots.</p>
         </div>
         <div className="demo__controls">
-          <div className="demo__count" role="radiogroup" aria-label="Number of bots">
+          <div className="demo__count" role="radiogroup" aria-label="Antall datamotstandere">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <button key={n} type="button" role="radio" aria-checked={bots === n} className={`demo__n ${bots === n ? 'is-on' : ''}`} onClick={() => setBots(n)}>{n}</button>
             ))}
           </div>
           <button type="button" className="btn btn--lg demo__go" disabled={demoBusy} onClick={() => void demo()}>
-            {demoBusy ? 'Dealing…' : `Play against ${bots} bot${bots === 1 ? '' : 's'}`}
+            {demoBusy ? 'Deler ut kort …' : `Spill mot ${bots} ${bots === 1 ? 'bot' : 'bots'}`}
           </button>
         </div>
         {demoError && <p className="form-error" role="alert">{demoError}</p>}

@@ -25,6 +25,46 @@ assert(madeHandName('Kh Td Kc'.split(' ')) === null, 'no name for an odd card co
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+async function allInShowdown(stacks: number[], holeCards: string[][], dealerSeat: number) {
+  const t = new Table({ name: 'Showdown', maxSeats: 3, requireApproval: false, rules: rs('cash-10-20') });
+  try {
+    const players = stacks.map((stack, i) => {
+      const p = t.createPlayer(['A', 'B', 'C'][i], i === 0);
+      p.connections = 1;
+      t.requestSeat(p, i + 1, p.name, stack);
+      return p;
+    });
+    // Resume at the chosen button position to keep the seat order fixed.
+    t.status = 'paused';
+    t.lastDealerSeat = dealerSeat === 1 ? 3 : dealerSeat - 1;
+    t.start(players[0].id);
+    for (let i = 0; i < 100 && !t.hand; i++) await sleep(2);
+    const h = t.hand!;
+    deepStrictEqual(h.dealerSeat, dealerSeat);
+    for (const p of h.players) p.hole = holeCards[p.seat - 1];
+    // Cards are popped from the end. Board after burns: 2h 4s 7c 9h Jd.
+    h.deck = ['Jd', '6d', '9h', '5d', '7c', '4s', '2h', '3d'];
+    // Shove on the river so settlement is synchronous, before the next hand posts blinds.
+    while (h.street !== 'river') {
+      const actor = h.players[h.toAct!].id;
+      t.act(actor, t.legal(actor)!.canCheck ? 'check' : 'call');
+    }
+    while (h.toAct != null) t.act(h.players[h.toAct].id, 'allin');
+    deepStrictEqual(h.finished, true, 'all-in hand reached showdown');
+    return players.map(p => p.stack);
+  } finally {
+    t.dispose();
+  }
+}
+
+// A's aces win the 300 main pot. B's kings beat C's queens for the 400 side pot.
+deepStrictEqual(await allInShowdown([100, 300, 300], [['As', 'Ad'], ['Ks', 'Kd'], ['Qs', 'Qd']], 1),
+  [300, 400, 0], 'main and side pots go to their respective winners');
+
+// Dealer C ties A across the button. A receives the odd chip from the 303 pot.
+deepStrictEqual(await allInShowdown([101, 101, 101], [['As', 'Ad'], ['Qs', 'Qd'], ['Ah', 'Ac']], 3),
+  [152, 0, 151], 'first tied winner left of the dealer receives the odd chip');
+
 // Check the fast runout scoring against the showdown evaluator, including board ties.
 {
   const { allInEquity } = await import('./equity');
@@ -169,7 +209,7 @@ for (const boardSize of [0, 3, 4, 5]) {
   const h = t.hand!;
   const upcoming = [...h.deck].reverse();
   const expectedBoard = [1, 2, 3, 5, 7].map((i) => upcoming[i]);
-  throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+  throws(() => t.rabbitHunt(a.id, h.number), /ikke tilgjengelig/);
   while (h.board.length < boardSize) {
     const id = h.players[h.toAct!].id;
     t.act(id, t.legal(id)!.canCheck ? 'check' : 'call');
@@ -178,13 +218,13 @@ for (const boardSize of [0, 3, 4, 5]) {
   t.act(h.players[h.toAct!].id, 'fold');
   deepStrictEqual(t.view(null).hand!.rabbitCards, []);
   if (boardSize === 5) {
-    throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+    throws(() => t.rabbitHunt(a.id, h.number), /ikke tilgjengelig/);
   } else {
     rules.rabbitHunt = false;
-    throws(() => t.rabbitHunt(a.id, h.number), /unavailable/);
+    throws(() => t.rabbitHunt(a.id, h.number), /ikke tilgjengelig/);
     rules.rabbitHunt = true;
-    throws(() => t.rabbitHunt('spectator', h.number), /unavailable/);
-    throws(() => t.rabbitHunt(a.id, h.number - 1), /unavailable/);
+    throws(() => t.rabbitHunt('spectator', h.number), /ikke tilgjengelig/);
+    throws(() => t.rabbitHunt(a.id, h.number - 1), /ikke tilgjengelig/);
     const stacks = t.players.map((p) => p.stack);
     const winners = structuredClone(h.winners);
     assert(t.view(a.id).you.canRabbitHunt, 'participant can request rabbit hunt');
@@ -277,17 +317,17 @@ for (const boardSize of [0, 3, 4, 5]) {
   const view = t.view(winner.id);
   const summary = formatResults(view);
   for (const p of [second, third, fourth]) {
-    assert(summary.includes(`${p.name} pays me (${winner.name}) 300 kr`), 'each loser pays the winner, including departed players');
+    assert(summary.includes(`${p.name} betaler meg (${winner.name}) 300 kr`), 'each loser pays the winner, including departed players');
   }
-  assert(!formatResults(t.view(null)).includes('pays me'), 'spectator copy names the recipients');
-  assert(!formatResults({ ...view, results: null }).includes('Settlement'), 'standings only with payouts off');
+  assert(!formatResults(t.view(null)).includes('betaler meg'), 'spectator copy names the recipients');
+  assert(!formatResults({ ...view, results: null }).includes('Oppgjør'), 'standings only with payouts off');
   // Net amounts +200, +100, -300 and 0 require a split payment.
   const split = formatResults({ ...view, results: { ...res,
     paid: { [winner.id]: 300, [second.id]: 300, [third.id]: 300, [fourth.id]: 0 },
     pool: 900, places: res.places.map((p, i) => ({ ...p, prize: [500, 400, 0][i] })),
   } });
-  assert(split.includes(`${third.name} pays me (${winner.name}) 200 kr\n${third.name} pays ${second.name} 100 kr`), 'split payment settles both net winners');
-  assert(split.split(' pays ').length === 3, 'break-even players owe nothing');
+  assert(split.includes(`${third.name} betaler meg (${winner.name}) 200 kr\n${third.name} betaler ${second.name} 100 kr`), 'split payment settles both net winners');
+  assert(split.split(' betaler ').length === 3, 'break-even players owe nothing');
   const { rankedResults, seasonStandings } = await import('../shared/results');
   const rows = rankedResults(view);
   deepStrictEqual(rows.map((p) => p.net), [900, -300, -300, -300]);

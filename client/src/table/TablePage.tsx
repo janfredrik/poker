@@ -102,7 +102,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
       mesh.setIdentity(v.you.playerId);
       setView(v);
     };
-    const onClosed = () => setFatal('The host closed this table.');
+    const onClosed = () => setFatal('Verten har stengt bordet.');
     const onConnect = () => { setConnected(true); join(); };
     const onDisconnect = () => setConnected(false);
     socket.on('state', onState);
@@ -144,7 +144,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     if (myTurn && !prevTurn.current) yourTurnSound();
     prevTurn.current = myTurn;
     const base = view && view.settings.name !== 'Poker' ? `${view.settings.name} · Poker` : 'Poker';
-    document.title = myTurn ? `Your turn · ${base}` : base;
+    document.title = myTurn ? `Din tur · ${base}` : base;
   }, [myTurn, view?.settings.name]);
 
   const potRef = useRef(0);
@@ -205,7 +205,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     return (
       <main className="gone">
         <h1>{fatal}</h1>
-        <button className="btn btn--act" onClick={() => navigate('/')}>Open a new table</button>
+        <button className="btn btn--act" onClick={() => navigate('/')}>Åpne et nytt bord</button>
       </main>
     );
   }
@@ -213,13 +213,13 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     return (
       <main className="gone">
         <Smartphone size={40} aria-hidden="true" />
-        <h1>You are playing on your phone now</h1>
-        <p className="gone__wait">Camera and mic moved with you. This screen is off the table.</p>
-        <button className="btn btn--quiet" onClick={() => { setHandedOff(null); socket.connect(); }}>Continue on this screen instead</button>
+        <h1>Du spiller nå på mobilen</h1>
+        <p className="gone__wait">Mobilen har overtatt kamera og mikrofon. Denne skjermen er koblet fra bordet.</p>
+        <button className="btn btn--quiet" onClick={() => { setHandedOff(null); socket.connect(); }}>Fortsett på denne skjermen</button>
       </main>
     );
   }
-  if (!view) return <main className="gone"><p className="gone__wait">Pulling up a chair…</p></main>;
+  if (!view) return <main className="gone"><p className="gone__wait">Åpner bordet …</p></main>;
 
   const hand = view.hand;
   setChipScale(view.settings.rules.levels[0]?.sb ?? 25);
@@ -245,7 +245,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
   const copyLink = async () => {
     const url = `${location.origin}/t/${view.id}`;
-    try { await navigator.clipboard.writeText(url); } catch { window.prompt('Copy this link', url); }
+    try { await navigator.clipboard.writeText(url); } catch { window.prompt('Kopier lenken', url); }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -254,7 +254,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     const text = formatResults(view);
     try {
       await navigator.clipboard.writeText(text);
-      setToast('Results copied');
+      setToast('Resultatene er kopiert');
     } catch {
       setManualCopy(text);
     }
@@ -306,15 +306,15 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           <div className="felt__center">
             {view.shuffling > 0 ? (
               <div className="felt__waiting shuffle" aria-live="polite">
-                <h2 className="felt__title">Shuffling seats</h2>
-                <div className="shuffle__steps" aria-label={`Shuffle ${view.shuffling} of 3`}>
+                <h2 className="felt__title">Trekker seter</h2>
+                <div className="shuffle__steps" aria-label={`Trekning ${view.shuffling} av 3`}>
                   {[1, 2, 3].map((n) => <span key={n} className={n <= view.shuffling ? 'is-done' : ''} />)}
                 </div>
-                <p className="felt__text">{view.shuffling < 3 ? `Round ${view.shuffling} of 3` : 'Final seats. Dealing…'}</p>
+                <p className="felt__text">{view.shuffling < 3 ? `Runde ${view.shuffling} av 3` : 'Setene er fordelt. Deler ut kort …'}</p>
               </div>
             ) : view.status === 'finished' ? (
               <div className="felt__waiting results">
-                <h2 className="felt__title">{view.players.find((p) => p.place === 1)?.name ?? 'Someone'} wins the tournament</h2>
+                <h2 className="felt__title">{view.players.find((p) => p.place === 1)?.name ?? 'En spiller'} vinner turneringen</h2>
                 {view.results ? (
                   <ol className="results__list">
                     {view.results.places.map((pl) => (
@@ -326,23 +326,23 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                     ))}
                   </ol>
                 ) : (
-                  <p className="felt__text">Final standings are in the ledger.</p>
+                  <p className="felt__text">Du finner sluttresultatene i regnskapet.</p>
                 )}
                 <div className="felt__actions">
-                  <button className="btn btn--quiet" onClick={() => { setDrawer(true); setTab('ledger'); }}>Open the settlement</button>
-                  <button className="btn btn--act" onClick={copyResults}>Copy results</button>
-                  <button className="btn btn--quiet" onClick={() => navigate('/')}>New table</button>
+                  <button className="btn btn--quiet" onClick={() => { setDrawer(true); setTab('ledger'); }}>Vis oppgjøret</button>
+                  <button className="btn btn--act" onClick={copyResults}>Kopier resultater</button>
+                  <button className="btn btn--quiet" onClick={() => navigate('/')}>Nytt bord</button>
                 </div>
               </div>
             ) : hand && !(view.status !== 'running' && hand.winners) ? (
               <>
                 <div className="pot" aria-live="polite" ref={potElRef}>
                   {potTotal > 0 && <ChipStack amount={potTotal} label={false} size="lg" />}
-                  <span className="pot__label">{hand.winners ? 'Hand over' : 'Pot'}</span>
+                  <span className="pot__label">{hand.winners ? 'Hånden er ferdig' : 'Pot'}</span>
                   <span className="pot__amount">{formatChips(hand.winners ? hand.winners.reduce((s, w) => s + w.amount, 0) : potWithBets)}</span>
                   {pots.length > 1 && (
                     <span className="pot__side">
-                      {pots.map((p, i) => <span key={i}>{i === 0 ? 'Main' : `Side ${i}`} {formatChips(p.amount)}</span>)}
+                      {pots.map((p, i) => <span key={i}>{i === 0 ? 'Main pot' : `Side pot ${i}`} {formatChips(p.amount)}</span>)}
                     </span>
                   )}
                 </div>
@@ -356,7 +356,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 </div>
                 {hand.winners && hand.winners[0]?.hand && (
                   <p className="felt__result">
-                    {hand.winners.map((w) => `${view.players.find((p) => p.id === w.playerId)?.name ?? 'Someone'} · ${w.hand}`).join('  ·  ')}
+                    {hand.winners.map((w) => `${view.players.find((p) => p.id === w.playerId)?.name ?? 'En spiller'} · ${w.hand}`).join('  ·  ')}
                   </p>
                 )}
               </>
@@ -366,52 +366,52 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                   <div className="invite">
                     <h2 className="invite__title">{view.settings.name}</h2>
                     <p className="invite__by">
-                      {host ? <>Hosted by <b>{host.name}</b> · </> : null}{seatedCount} of {maxSeats} seats taken
+                      {host ? <><b>{host.name}</b> er vert · </> : null}{seatedCount} av {maxSeats} seter opptatt
                     </p>
                     <dl className="invite__terms">
                       <div><dt>Blinds</dt><dd>{formatChips(view.clock.level.sb)}/{formatChips(view.clock.level.bb)}</dd></div>
-                      <div><dt>{tourney ? 'Starting stack' : 'Buy-in'}</dt><dd>{formatChips(view.settings.rules.startingStack)}</dd></div>
-                      {tourney && <div><dt>Levels</dt><dd>{view.settings.rules.levelMinutes} min</dd></div>}
+                      <div><dt>{tourney ? 'Startstack' : 'Buy-in'}</dt><dd>{formatChips(view.settings.rules.startingStack)}</dd></div>
+                      {tourney && <div><dt>Nivåer</dt><dd>{view.settings.rules.levelMinutes} min</dd></div>}
                     </dl>
                     <div className="felt__actions">
                       <button className="btn btn--act btn--lg invite__cta" disabled={openSeat == null} onClick={() => openSeat != null && setSitAt(openSeat)}>
-                        {openSeat == null ? 'Table is full' : 'Take a seat'}
+                        {openSeat == null ? 'Bordet er fullt' : 'Velg et sete'}
                       </button>
                     </div>
-                    <p className="felt__hint">{openSeat == null ? 'Stay and watch; a chair may open up.' : 'Or tap any open chair around the table.'}</p>
+                    <p className="felt__hint">{openSeat == null ? 'Du kan se på mens du venter på et ledig sete.' : 'Du kan også velge et ledig sete ved bordet.'}</p>
                   </div>
                 ) : view.status === 'waiting' ? (
                   <>
-                    <h2 className="felt__title">{seatedCount < 2 ? 'Waiting for players' : 'Ready when you are'}</h2>
+                    <h2 className="felt__title">{seatedCount < 2 ? 'Venter på spillere' : 'Klar til spill'}</h2>
                     <p className="felt__text">
-                      {seatedCount} of {maxSeats} seats taken · {formatChips(view.clock.level.sb)}/{formatChips(view.clock.level.bb)}{tourney ? `, ${view.settings.rules.levelMinutes} min levels` : ''}
+                      {seatedCount} av {maxSeats} seter opptatt · {formatChips(view.clock.level.sb)}/{formatChips(view.clock.level.bb)}{tourney ? `, ${view.settings.rules.levelMinutes} min per nivå` : ''}
                     </p>
                     <div className="felt__actions">
                       {view.you.isHost && (
                         <button className="btn btn--act" disabled={seatedCount < 2} onClick={() => fire('host:start')}>
-                          <Play size={16} /> Start game
+                          <Play size={16} /> Start spillet
                         </button>
                       )}
-                      <button className="btn btn--quiet" onClick={copyLink}><Link2 size={16} /> {copied ? 'Link copied' : 'Copy invite link'}</button>
+                      <button className="btn btn--quiet" onClick={copyLink}><Link2 size={16} /> {copied ? 'Lenken er kopiert' : 'Kopier invitasjonslenken'}</button>
                     </div>
-                    {view.you.isHost && seatedCount < 2 && <p className="felt__hint">Pick a seat yourself, then send the link to the others.</p>}
-                    {!view.you.isHost && <p className="felt__hint">The host starts the game.</p>}
+                    {view.you.isHost && seatedCount < 2 && <p className="felt__hint">Velg et sete og send lenken til de andre.</p>}
+                    {!view.you.isHost && <p className="felt__hint">Verten starter spillet.</p>}
                   </>
                 ) : view.status === 'paused' ? (
                   <>
-                    <h2 className="felt__title">Paused</h2>
-                    <p className="felt__text">{view.you.isHost ? 'Resume when everyone is back.' : 'The host will resume the game.'}</p>
-                    {view.you.isHost && <div className="felt__actions"><button className="btn btn--act" onClick={() => fire('host:start')}><Play size={16} /> Resume</button></div>}
+                    <h2 className="felt__title">På pause</h2>
+                    <p className="felt__text">{view.you.isHost ? 'Fortsett når alle er tilbake.' : 'Verten starter spillet igjen.'}</p>
+                    {view.you.isHost && <div className="felt__actions"><button className="btn btn--act" onClick={() => fire('host:start')}><Play size={16} /> Fortsett</button></div>}
                   </>
                 ) : view.clock.onBreak ? (
                   <>
-                    <h2 className="felt__title">On a break</h2>
-                    <p className="felt__text">Cards are back in the air when the clock runs out.</p>
+                    <h2 className="felt__title">Pause</h2>
+                    <p className="felt__text">Neste hånd deles ut når pausen er over.</p>
                   </>
                 ) : (
                   <>
-                    <h2 className="felt__title">Waiting for players</h2>
-                    <p className="felt__text">A hand starts as soon as two players have chips.</p>
+                    <h2 className="felt__title">Venter på spillere</h2>
+                    <p className="felt__text">Neste hånd starter så snart to spillere har chips.</p>
                   </>
                 )}
               </div>
@@ -421,7 +421,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             )}
             {!!hand?.rabbitCards?.length && (
               <div className="felt__waiting" role="status">
-                <span className="felt__text">Rabbit hunt · {hand.board.length === 0 ? 'Flop, turn and river' : hand.board.length === 3 ? 'Turn and river' : 'River'}</span>
+                <span className="felt__text">Rabbit hunt · {hand.board.length === 0 ? 'Flop, turn og river' : hand.board.length === 3 ? 'Turn og river' : 'River'}</span>
                 {view.status !== 'running' && (
                   <div className="board">{hand.rabbitCards.map((card) => <PlayingCard key={card} card={card} size="sm" />)}</div>
                 )}
@@ -506,11 +506,11 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         {manualCopy && (
           <div className="sheet-wrap">
             <section className="sheet" role="dialog" aria-labelledby="copy-results-title">
-              <h2 id="copy-results-title" className="sheet__title">Copy results</h2>
-              <textarea aria-label="Results to copy" readOnly autoFocus rows={9}
+              <h2 id="copy-results-title" className="sheet__title">Kopier resultater</h2>
+              <textarea aria-label="Resultater til kopiering" readOnly autoFocus rows={9}
                 value={manualCopy} onFocus={(e) => e.currentTarget.select()} />
               <div className="sheet__actions">
-                <button className="btn btn--quiet" onClick={() => setManualCopy('')}>Done</button>
+                <button className="btn btn--quiet" onClick={() => setManualCopy('')}>Ferdig</button>
               </div>
             </section>
           </div>
@@ -547,8 +547,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 <input name="amount" inputMode="numeric" defaultValue={view.settings.rules.startingStack} required autoFocus />
               </label>
               <div className="sheet__actions">
-                <button type="button" className="btn btn--quiet" onClick={() => setRebuyOpen(false)}>Cancel</button>
-                <button className="btn btn--act" disabled={busy}>Add chips</button>
+                <button type="button" className="btn btn--quiet" onClick={() => setRebuyOpen(false)}>Avbryt</button>
+                <button className="btn btn--act" disabled={busy}>Legg til chips</button>
               </div>
             </form>
           </div>
@@ -563,11 +563,11 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         {arrived === 'ask' && (
           <div className="sheet-wrap">
             <div className="sheet">
-              <h2 className="sheet__title">You are in, {me?.name ?? 'welcome back'}</h2>
-              <p className="field__hint">Your seat moved to this phone. Turn on the camera and mic here so the table can see and hear you.</p>
+              <h2 className="sheet__title">{me?.name ? `Velkommen tilbake, ${me.name}!` : 'Velkommen tilbake!'}</h2>
+              <p className="field__hint">Du spiller nå på denne mobilen. Slå på kameraet og mikrofonen slik at de andre kan se og høre deg.</p>
               <div className="sheet__actions">
-                <button className="btn btn--quiet" onClick={() => setArrived(null)}>Not now</button>
-                <button className="btn btn--act" onClick={async () => { setArrived(null); unlockAudio(); await mesh.setCam(true); await mesh.setMic(true); }}>Turn on camera</button>
+                <button className="btn btn--quiet" onClick={() => setArrived(null)}>Ikke nå</button>
+                <button className="btn btn--act" onClick={async () => { setArrived(null); unlockAudio(); await mesh.setCam(true); await mesh.setMic(true); }}>Slå på kamera og mikrofon</button>
               </div>
             </div>
           </div>
@@ -575,21 +575,21 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
         {handedOff === 'camera' && (
           <div className="banner banner--action" role="status">
-            <Smartphone size={15} aria-hidden="true" /> Playing on your phone. This screen keeps your camera on.
+            <Smartphone size={15} aria-hidden="true" /> Du spiller på mobilen. Kameraet er fortsatt på her.
             <button className="btn btn--quiet btn--sm" onClick={() => setHandedOff(null)}>OK</button>
           </div>
         )}
 
-        {!connected ? <div className="banner" role="status">Reconnecting to the table…</div>
+        {!connected ? <div className="banner" role="status">Kobler til bordet på nytt …</div>
           : pausedMidHand ? (
             <div className="banner banner--action" role="status">
-              <Pause size={15} aria-hidden="true" /> {view.you.isHost ? 'Paused. The hand continues when you resume.' : 'The host paused the game. The hand continues when they resume.'}
-              {view.you.isHost && <button className="btn btn--act btn--sm" onClick={() => fire('host:start')}><Play size={14} /> Resume</button>}
+              <Pause size={15} aria-hidden="true" /> {view.you.isHost ? 'Spillet er satt på pause. Hånden fortsetter når du starter igjen.' : 'Verten har satt spillet på pause. Hånden fortsetter når verten starter igjen.'}
+              {view.you.isHost && <button className="btn btn--act btn--sm" onClick={() => fire('host:start')}><Play size={14} /> Fortsett</button>}
             </div>
           ) : view.you.canClaimHost && !handedOff ? (
             <div className="banner banner--action" role="status">
-              <Crown size={15} aria-hidden="true" /> The host is disconnected.
-              <button className="btn btn--quiet btn--sm" onClick={() => fire('host:claim')}>Take over as host</button>
+              <Crown size={15} aria-hidden="true" /> Verten har mistet forbindelsen.
+              <button className="btn btn--quiet btn--sm" onClick={() => fire('host:claim')}>Overta som vert</button>
             </div>
           ) : null}
         {toast && <div className="toast" role="alert" onClick={() => setToast(null)}>{toast}</div>}
@@ -620,16 +620,16 @@ function SitSheet({ seat, tableName, defaultName, stack, fixed, ask, busy, onSub
   return (
     <form className="sheet sheet--felt sitdown" onSubmit={onSubmit}>
       <div className="sitdown__head">
-        <h2 className="sheet__title">Seat {seat}</h2>
+        <h2 className="sheet__title">Sete {seat}</h2>
         <span className="sitdown__table">{tableName}</span>
       </div>
       <div className="sitdown__stack" aria-live="polite">
         <span className="sitdown__chips">{amount > 0 && <ChipStack amount={amount} label={false} size="lg" spread />}</span>
         <span className="sitdown__amount">{formatChips(amount)}</span>
-        <span className="sitdown__unit">{fixed ? 'chips, the same for everyone' : 'chips to start with'}</span>
+        <span className="sitdown__unit">{fixed ? 'chips, likt for alle' : 'chips ved start'}</span>
       </div>
       <label className="field">
-        <span className="field__label">Name at the table</span>
+        <span className="field__label">Navnet ditt ved bordet</span>
         <input name="name" defaultValue={defaultName} maxLength={18} required autoFocus autoComplete="nickname" />
       </label>
       {fixed ? (
@@ -640,10 +640,10 @@ function SitSheet({ seat, tableName, defaultName, stack, fixed, ask, busy, onSub
           <input name="buyIn" inputMode="numeric" value={buyIn} onChange={(e) => setBuyIn(e.target.value)} required />
         </label>
       )}
-      {ask && <p className="field__hint">The host approves your seat before you are dealt in.</p>}
+      {ask && <p className="field__hint">Verten må godkjenne setet ditt før du får kort.</p>}
       <div className="sheet__actions">
-        <button type="button" className="btn btn--quiet" onClick={onCancel}>Cancel</button>
-        <button className="btn btn--act" disabled={busy || amount <= 0}>{ask ? 'Ask to sit' : 'Sit down'}</button>
+        <button type="button" className="btn btn--quiet" onClick={onCancel}>Avbryt</button>
+        <button className="btn btn--act" disabled={busy || amount <= 0}>{ask ? 'Be om sete' : 'Velg et sete'}</button>
       </div>
     </form>
   );
