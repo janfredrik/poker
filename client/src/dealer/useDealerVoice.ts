@@ -23,13 +23,18 @@ export function useDealerVoice() {
   /** Resolves once the line has finished (or could not be played). */
   const play = useCallback(async (url: string): Promise<boolean> => {
     const ctx = sharedAudio();
-    if (!ctx || ctx.state !== 'running') return false;
+    if (!ctx) return false;
+    // Suspended (or "interrupted" in Safari) after a while in the background: try to wake it.
+    if (ctx.state !== 'running') {
+      await Promise.race([ctx.resume().catch(() => {}), new Promise((r) => setTimeout(r, 500))]);
+      if ((ctx.state as AudioContextState) !== 'running') { console.warn('[dealer] lyd er blokkert av nettleseren til du klikker på siden'); return false; }
+    }
     let buffer: AudioBuffer;
     try {
       const res = await fetch(url);
-      if (!res.ok) return false;
+      if (!res.ok) { console.warn(`[dealer] fant ikke lyden (HTTP ${res.status})`); return false; }
       buffer = await ctx.decodeAudioData(await res.arrayBuffer());
-    } catch { return false; }
+    } catch (e) { console.warn('[dealer] kunne ikke spille lyden:', e); return false; }
     stop();
     const src = ctx.createBufferSource();
     src.buffer = buffer;

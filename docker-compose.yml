@@ -33,5 +33,7 @@ services:
       - ELEVENLABS_MODEL_FIXED=${ELEVENLABS_MODEL_FIXED:-eleven_v4}
       - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY:-}
       - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION:-}
+      - DEALER_VOICE=${DEALER_VOICE:-}
+      - AZURE_TTS_VOICE=${AZURE_TTS_VOICE:-nb-NO-PernilleNeural}
     volumes:
       - ${DATA_PATH:-./data}:/data

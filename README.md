@@ -111,15 +111,17 @@ After the relay test above succeeds, remove the old `coturn` container (`docker 
 | `TURN_BILLING_DAY` | `1` | Day of month the billing period starts (1-28) |
 | `ALERT_WEBHOOK_URL` | none | Where alerts are POSTed |
 | `ALERT_WEBHOOK_FORMAT` | `json` | `json` (`title`, `message`, `text`, `content`, `usedGB`, `limitGB`, `percent`) or `text` (ntfy) |
-| `OPENROUTER_API_KEY` | none | AI dealer's brain. She exists only with this, `ELEVENLABS_API_KEY` and `ELEVENLABS_VOICE_ID` (see `DEALER.md`) |
+| `OPENROUTER_API_KEY` | none | AI dealer's brain. She exists only with this and a voice: ElevenLabs or Azure Speech (see `DEALER.md`) |
 | `DEALER_MODEL` | `anthropic/claude-haiku-5.5` | OpenRouter model for her lines |
 | `DEALER_MAX_PER_HOUR` | `60` | Fresh lines and answers per table per hour |
 | `ELEVENLABS_API_KEY` | none | Her voice |
 | `ELEVENLABS_VOICE_ID` | none | A Norwegian female voice from your ElevenLabs voice library |
 | `ELEVENLABS_MODEL_LIVE` | `eleven_v4_turbo` | Voice model for fresh lines |
 | `ELEVENLABS_MODEL_FIXED` | `eleven_v4` | Voice model for fixed lines (made once, kept in `DATA_DIR/dealer/`) |
-| `AZURE_SPEECH_KEY` | none | Speech-to-text so players can talk to her (push-to-talk) |
+| `AZURE_SPEECH_KEY` | none | Speech-to-text so players can talk to her (push-to-talk), and optionally her voice |
 | `AZURE_SPEECH_REGION` | none | Azure Speech region, e.g. `norwayeast` |
+| `DEALER_VOICE` | ElevenLabs if set up, else Azure | Her voice: `elevenlabs` or `azure` |
+| `AZURE_TTS_VOICE` | `nb-NO-PernilleNeural` | Azure voice when she speaks with Azure (`nb-NO-IselinNeural` is the other Norwegian woman) |
 
 ## Development
 

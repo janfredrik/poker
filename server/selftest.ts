@@ -573,6 +573,18 @@ for (const boardSize of [0, 3, 4, 5]) {
   assert(said[0]?.text === 'Der røk den. Pent spilt likevel.', `dealer: line trimmed to two sentences (${said[0]?.text})`);
   assert(!!said[0]?.audioUrl?.startsWith('/api/dealer/audio/'), 'dealer: line comes with audio');
   assert(fetched.some((f) => f.url.includes('elevenlabs') && JSON.parse(f.body).model_id === 'eleven_v4_turbo'), 'dealer: fresh line uses the live voice model');
+  {
+    const { freshAudio } = await import('./dealer/tts');
+    process.env.DEALER_VOICE = 'azure';
+    const n = fetched.length;
+    const id = await freshAudio('Kari & Ola <3');
+    const call = fetched.slice(n).find((f) => f.url.includes('norwayeast.tts.speech.microsoft.com'));
+    assert(!!id && !!call && call.body.includes('nb-NO-PernilleNeural') && call.body.includes('Kari &#38; Ola &#60;3'), 'dealer: DEALER_VOICE=azure speaks with an escaped Norwegian Azure voice');
+    delete process.env.ELEVENLABS_API_KEY;
+    delete process.env.DEALER_VOICE;
+    assert(dealerAvailable(), 'dealer: Azure alone is enough for her voice');
+    process.env.ELEVENLABS_API_KEY = keys.ELEVENLABS_API_KEY;
+  }
   on.t.dispose();
   // welcome by name when someone sits down, once, or just "Velkommen til bordet" for odd names
   {
