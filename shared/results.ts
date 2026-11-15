@@ -28,11 +28,12 @@ export interface SeasonNight {
   finishedAt: number;
   year: number;
   currency: string | null;
-  players: (ReturnType<typeof rankedResults>[number] & { stats?: PlayerStats })[];
+  /** rebuys/addOn are missing on nights archived before they were recorded. */
+  players: (ReturnType<typeof rankedResults>[number] & { stats?: PlayerStats; rebuys?: number; addOn?: boolean })[];
 }
 
 export function seasonStandings(nights: SeasonNight[]) {
-  interface Standing { key: string; name: string; games: number; wins: number; net: number; stats: PlayerStats }
+  interface Standing { key: string; name: string; games: number; wins: number; net: number; rebuys: number; addOns: number; stats: PlayerStats }
   const totals = new Map<string, Standing>();
   for (const night of nights) {
     const names = night.players.map((p) => p.name.trim().normalize().toLowerCase());
@@ -41,10 +42,12 @@ export function seasonStandings(nights: SeasonNight[]) {
       // Equal display names at one table cannot be attributed across games.
       const key = duplicate ? JSON.stringify([night.id, p.id]) : JSON.stringify(names[index]);
       const name = duplicate ? `${p.name} (#${p.place})` : p.name;
-      const row = totals.get(key) ?? { key, name, games: 0, wins: 0, net: 0, stats: emptyStats() };
+      const row = totals.get(key) ?? { key, name, games: 0, wins: 0, net: 0, rebuys: 0, addOns: 0, stats: emptyStats() };
       row.games++;
       if (p.place === 1) row.wins++;
       row.net += p.net ?? 0;
+      row.rebuys += p.rebuys ?? 0;
+      if (p.addOn) row.addOns++;
       if (p.stats) {
         row.stats.hands += p.stats.hands;
         row.stats.vpipHands += p.stats.vpipHands;

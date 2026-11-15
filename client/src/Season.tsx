@@ -7,8 +7,14 @@ function Net({ amount }: { amount: number | null }) {
   return <td className={amount > 0 ? 'is-up' : amount < 0 ? 'is-down' : ''}>{amount > 0 ? '+' : ''}{formatChips(amount)}</td>;
 }
 
+function rebuyText(rebuys: number, addOns: number) {
+  return addOns ? `${rebuys} + ${addOns === 1 ? 'add-on' : `${addOns} add-ons`}` : String(rebuys);
+}
+
 function Night({ night }: { night: SeasonNight }) {
   const date = new Date(night.finishedAt);
+  const recorded = night.players.some((p) => p.rebuys != null);
+  const showRebuys = night.players.some((p) => p.rebuys || p.addOn);
   return <details className="season__night">
     <summary>
       <strong>{night.name}</strong>
@@ -16,9 +22,10 @@ function Night({ night }: { night: SeasonNight }) {
     </summary>
     <table className="ledger">
       <caption className="sr-only">Sluttresultater for {night.name}</caption>
-      <thead><tr><th>Plass / spiller</th>{night.currency != null && <><th>Innbetalt</th><th>Premie</th><th>Netto ({night.currency})</th></>}</tr></thead>
+      <thead><tr><th>Plass / spiller</th>{showRebuys && <th>Rebuys</th>}{night.currency != null && <><th>Innbetalt</th><th>Premie</th><th>Netto ({night.currency})</th></>}</tr></thead>
       <tbody>{night.players.map((p) => <tr key={p.id}>
         <th scope="row">{p.place}. {p.name}</th>
+        {showRebuys && <td>{recorded ? rebuyText(p.rebuys ?? 0, p.addOn ? 1 : 0) : '—'}</td>}
         {night.currency != null && <><td>{p.paid == null ? '—' : formatChips(p.paid)}</td><td>{formatChips(p.prize)}</td><Net amount={p.net} /></>}
       </tr>)}</tbody>
     </table>
@@ -29,11 +36,12 @@ function Standings({ nights }: { nights: SeasonNight[] }) {
   const currencies = [...new Set(nights.map((n) => n.currency))];
   return <>{currencies.map((currency) => {
     const rows = seasonStandings(nights.filter((n) => n.currency === currency));
+    const showRebuys = rows.some((p) => p.rebuys || p.addOns);
     return <table className="ledger" key={JSON.stringify(currency)}>
       <caption className={currencies.length === 1 ? 'sr-only' : 'season__caption'}>{currency == null ? 'Spill uten premier' : `Sammenlagt i ${currency}`}</caption>
-      <thead><tr><th>Spiller</th><th>Spill</th><th>Seire</th>{currency != null && <th>Netto ({currency})</th>}</tr></thead>
+      <thead><tr><th>Spiller</th><th>Spill</th><th>Seire</th>{showRebuys && <th>Rebuys</th>}{currency != null && <th>Netto ({currency})</th>}</tr></thead>
       <tbody>{rows.map((p) => <tr key={p.key}>
-        <th scope="row">{p.name}</th><td>{p.games}</td><td>{p.wins}</td>{currency != null && <Net amount={p.net} />}
+        <th scope="row">{p.name}</th><td>{p.games}</td><td>{p.wins}</td>{showRebuys && <td>{rebuyText(p.rebuys, p.addOns)}</td>}{currency != null && <Net amount={p.net} />}
       </tr>)}</tbody>
     </table>;
   })}</>;

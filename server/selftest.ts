@@ -336,10 +336,11 @@ for (const boardSize of [0, 3, 4, 5]) {
   const stats = { hands: 10, vpipHands: 3, pfrHands: 2, showdownsWon: 1, biggestPot: 800 };
   const season = seasonStandings([
     { ...night, players: [{ ...player, stats }] },
-    { ...night, id: 'rematch', players: [{ ...player, name: player.name.toLowerCase(), place: 2, net: -300,
+    { ...night, id: 'rematch', players: [{ ...player, name: player.name.toLowerCase(), place: 2, net: -300, rebuys: 2, addOn: true,
       stats: { hands: 2, vpipHands: 2, pfrHands: 1, showdownsWon: 1, biggestPot: 100 } }] },
   ]);
   assert(season.length === 1 && season[0].games === 2 && season[0].wins === 1 && season[0].net === 600, 'season aggregates across tables by name');
+  assert(season[0].rebuys === 2 && season[0].addOns === 1, 'season sums rebuys and add-ons, treating unrecorded nights as none');
   deepStrictEqual(season[0].stats, { hands: 12, vpipHands: 5, pfrHands: 3, showdownsWon: 2, biggestPot: 800 });
   t.dispose();
 }
