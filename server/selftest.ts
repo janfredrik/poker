@@ -573,6 +573,7 @@ for (const boardSize of [0, 3, 4, 5]) {
   assert(said[0]?.text === 'Der røk den. Pent spilt likevel.', `dealer: line trimmed to two sentences (${said[0]?.text})`);
   assert(!!said[0]?.audioUrl?.startsWith('/api/dealer/audio/'), 'dealer: line comes with audio');
   assert(fetched.some((f) => f.url.includes('elevenlabs') && JSON.parse(f.body).model_id === 'eleven_v4_turbo'), 'dealer: fresh line uses the live voice model');
+  assert(fetched.filter((f) => f.url.includes('elevenlabs')).every((f) => JSON.parse(f.body).language_code === 'no'), 'dealer: ElevenLabs is told to speak Norwegian');
   {
     const { freshAudio } = await import('./dealer/tts');
     process.env.DEALER_VOICE = 'azure';

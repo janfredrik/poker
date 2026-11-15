@@ -47,7 +47,7 @@ async function synth(text: string, model: string, timeoutMs: number): Promise<Bu
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(c.voiceId)}?output_format=mp3_44100_64`, {
       method: 'POST',
       headers: { 'xi-api-key': c.elevenKey, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
-      body: JSON.stringify({ text, model_id: model }),
+      body: JSON.stringify({ text, model_id: model, language_code: 'no' }),
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
