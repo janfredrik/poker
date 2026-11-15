@@ -87,9 +87,7 @@ class MediaMesh {
   private async config(): Promise<RTCIceServer[]> {
     if (this.iceServers && Date.now() < this.iceRefreshAt) return this.iceServers;
     try {
-      const res = await fetch('/api/rtc-config');
-      if (!res.ok) throw new Error(`rtc-config ${res.status}`);
-      const body = await res.json() as { iceServers?: RTCIceServer[]; expiresAt?: number };
+      const body = await call<{ iceServers?: RTCIceServer[]; expiresAt?: number }>('rtc:config');
       if (!Array.isArray(body.iceServers)) throw new Error('rtc-config without iceServers');
       this.iceServers = body.iceServers;
       this.iceRefreshAt = body.expiresAt ? body.expiresAt - 3600_000 : Infinity;

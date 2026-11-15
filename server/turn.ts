@@ -18,8 +18,12 @@ const KEY_ID = env.CF_TURN_KEY_ID?.trim();
 const KEY_TOKEN = env.CF_TURN_API_TOKEN?.trim();
 const ACCOUNT_ID = env.CF_ACCOUNT_ID?.trim();
 const ANALYTICS_TOKEN = env.CF_ANALYTICS_TOKEN?.trim();
-/** Credential lifetime. Clients refetch an hour before it runs out, so keep it well above that. */
-const TTL_S = Math.max(2, Number(env.TURN_TTL_HOURS) || 24) * 3600;
+/**
+ * Credential lifetime. Clients refetch an hour before it runs out and a table shares one credential
+ * while it has more than two hours left, so keep it at three hours or more. Short, so a leaked
+ * credential is worthless after the evening.
+ */
+const TTL_S = Math.max(3, Number(env.TURN_TTL_HOURS) || 4) * 3600;
 const LIMIT_GB = Number(env.TURN_MONTHLY_GB) || 1000;
 const WARN_PCT = (env.TURN_WARN_PERCENT ?? '50,80,95').split(',').map(Number).filter((n) => n > 0 && n < 100).sort((a, b) => a - b);
 const STOP_AT_LIMIT = env.TURN_STOP_AT_LIMIT !== 'false';
@@ -40,7 +44,7 @@ const watchConfigured = turnConfigured && !!(ACCOUNT_ID && ANALYTICS_TOKEN);
  * Without TURN. `retryMs` makes clients ask again that soon: they refetch an hour before
  * `expiresAt`, so it is set an hour plus `retryMs` ahead.
  */
-function stunOnly(retryMs?: number): RtcConfig {
+export function stunOnly(retryMs?: number): RtcConfig {
   const iceServers = STUN.length ? [{ urls: STUN }] : [];
   return retryMs ? { iceServers, expiresAt: Date.now() + 3600_000 + retryMs } : { iceServers };
 }
@@ -74,6 +78,32 @@ export async function rtcConfig(): Promise<RtcConfig> {
     return stunOnly(5 * 60_000);
   }
 }
+
+/** Shared credentials per table, so reloading the page doesn't mint new ones. */
+const shared = new Map<string, Promise<RtcConfig>>();
+const SHARE_MIN_LEFT_MS = 2 * 3600_000;
+
+/**
+ * Config for someone at table `key`. Everyone at the table gets the same TURN credential while it
+ * has more than two hours left (clients refetch with an hour left, so they then get a fresh one).
+ * The monthly limit is checked on every call, so a shared credential stops being handed out at the limit.
+ */
+export async function rtcConfigFor(key: string): Promise<RtcConfig> {
+  if (!turnConfigured) return stunOnly();
+  if (STOP_AT_LIMIT && usage.usedBytes >= LIMIT_GB * GB) return stunOnly(3600_000);
+  const now = Date.now();
+  if (shared.size > 1000) for (const [k, p] of shared) if (((await p).expiresAt ?? 0) < now) shared.delete(k);
+  let p = shared.get(key);
+  const cfg = p && await p;
+  if (!cfg || !cfg.iceServers.some((s) => s.username) || (cfg.expiresAt ?? 0) - now < SHARE_MIN_LEFT_MS) {
+    p = rtcConfig();
+    shared.set(key, p);
+  }
+  return p!;
+}
+
+/** Forget a table's shared credential (the table was closed). */
+export function forgetRtcConfig(key: string) { shared.delete(key); }
 
 /* ---------------- monthly usage watch ---------------- */
 

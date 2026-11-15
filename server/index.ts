@@ -11,7 +11,7 @@ import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
 import { archiveResult, deleteRuleSet, deleteTableFile, flushAll, listResults, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
 import { createDemoTable, driveBots } from './demo';
-import { rtcConfig, startUsageWatch, usageSummary } from './turn';
+import { forgetRtcConfig, rtcConfigFor, startUsageWatch, stunOnly, usageSummary } from './turn';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -55,7 +55,6 @@ const HOUR = 60 * 60 * 1000;
 /** Attempts to open a table per IP and hour; wrong codes count, which also slows down guessing. */
 const allowCreate = ipLimiter(HOUR, 10);
 const allowDemo = ipLimiter(HOUR, 15);
-const allowRtc = ipLimiter(10 * 60 * 1000, 60);   // a whole household behind one IP reloading a few times is fine
 /** Live demo tables a single IP may have at once. */
 const MAX_DEMOS_PER_IP = 3;
 const demoOwner = new Map<string, string>();
@@ -88,12 +87,6 @@ app.set('trust proxy', TRUSTED_PROXY);
 app.use(express.json({ limit: '64kb' }));
 
 app.get('/api/health', (_req, res) => { res.json({ ok: true, tables: tables.size, turn: usageSummary() }); });
-
-/** ICE servers for WebRTC: Cloudflare TURN credentials (see turn.ts), rate-limited per client IP. */
-app.get('/api/rtc-config', async (req, res) => {
-  if (!allowRtc(req.ip ?? '?')) { res.status(429).json({ error: 'For mange forespørsler.' }); return; }
-  res.set('Cache-Control', 'no-store').json(await rtcConfig());
-});
 
 app.get('/api/config', (_req, res) => { res.json({ needsCode: Boolean(CREATE_CODE) }); });
 
@@ -355,6 +348,18 @@ io.on('connection', (raw) => {
     drop(t);
   }));
 
+  /*
+   * ICE servers. TURN credentials only go to sockets at a real table with someone else there to
+   * connect to, shared per table (see turn.ts); demo tables and lone visitors get STUN only.
+   */
+  s.on('rtc:config', (_: unknown, ack: (res: unknown) => void) => {
+    if (typeof ack !== 'function') return;
+    const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
+    const others = (io.sockets.adapter.rooms.get(t?.id ?? '')?.size ?? 0) > 1;
+    const cfg = t && !t.demo && others ? rtcConfigFor(t.id) : Promise.resolve(stunOnly(t && !t.demo ? 60_000 : undefined));
+    cfg.then((data) => ack({ ok: true, data }), () => ack({ ok: true, data: stunOnly(60_000) }));
+  });
+
   // WebRTC signalling relay (only between sockets in the same table)
   s.on('rtc:signal', (msg: { to: string; data: unknown }) => {
     const target = io.sockets.sockets.get(String(msg?.to)) as S | undefined;
@@ -391,6 +396,7 @@ function drop(t: Table) {
   tables.delete(t.id);
   emptySince.delete(t.id);
   demoOwner.delete(t.id);
+  forgetRtcConfig(t.id);
   if (!t.demo) deleteTableFile(t.id);
 }
 

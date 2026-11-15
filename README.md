@@ -61,11 +61,11 @@ Health check: `GET /api/health` (also shows this month's TURN usage).
 
 Camera and microphone go **peer-to-peer** between browsers whenever possible. When two players can't reach each other directly (strict NAT, some mobile and corporate networks), the browser falls back to Cloudflare's TURN relay at `turn.cloudflare.com`, including TURN over TLS on port 443 that gets through most firewalls. Media is end-to-end encrypted (DTLS-SRTP), so the relay can't see or hear it. Players see each other's IP addresses on direct connections, as with any peer-to-peer video.
 
-1. In the Cloudflare dashboard, go to **Realtime > TURN Server** and create a TURN key. Put its **Key ID** in `CF_TURN_KEY_ID` and its **API token** in `CF_TURN_API_TOKEN`. The token stays on the server; `GET /api/rtc-config` hands each browser short-lived credentials (24 h by default, refreshed automatically on long nights).
+1. In the Cloudflare dashboard, go to **Realtime > TURN Server** and create a TURN key. Put its **Key ID** in `CF_TURN_KEY_ID` and its **API token** in `CF_TURN_API_TOKEN`. The token stays on the server; browsers get short-lived credentials over the socket (4 h by default, refreshed automatically on long nights), and only while they are at a real table with someone else there. Everyone at a table shares one credential; demo tables get STUN only.
 2. For usage alerts, create an API token under **My Profile > API Tokens** with the permission **Account > Account Analytics > Read**, and set `CF_ACCOUNT_ID` (the 32-character ID in the dashboard URL) and `CF_ANALYTICS_TOKEN`.
 3. Set `ALERT_WEBHOOK_URL` to where you want alerts (below), then restart the container. The log should say `[turn] watching TURN usage: ...`.
 
-If the Cloudflare API is unreachable, `/api/rtc-config` falls back to STUN only (direct video keeps working) and clients retry after a few minutes.
+If the Cloudflare API is unreachable, the server falls back to STUN only (direct video keeps working) and clients retry after a few minutes.
 
 **Cost.** Cloudflare includes 1 000 GB of Realtime traffic per month (shared by TURN, SFU and MoQ), then $0.05/GB. Only relayed connections count. Even with all video of a 7-player table relayed, that is roughly 20 GB per hour of play.
 
@@ -81,7 +81,7 @@ The included traffic follows Cloudflare's billing period. If yours doesn't start
 
 ### Testing the relay
 
-1. `curl -s https://poker.example.com/api/rtc-config` should list `stun:stun.cloudflare.com` and `turn:turn.cloudflare.com` / `turns:` URLs with a username and an `expiresAt`. No URLs on port 53 (browsers block them).
+1. Open a table in two browsers. In devtools, under the WebSocket messages of `/socket.io`, the reply to `rtc:config` should list `stun:stun.cloudflare.com` and `turn:turn.cloudflare.com` / `turns:` URLs with a username and an `expiresAt`. No URLs on port 53 (browsers block them).
 2. Test the relay alone: open [Trickle ICE](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/), add one `turns:turn.cloudflare.com:443?transport=tcp` URL with the username and credential from step 1, and gather: a candidate of type **relay** means TURN works.
 3. Test across networks: one player on home Wi-Fi, one on a phone with Wi-Fi off (mobile data), ideally one on a work or guest network. Everyone should see and hear each other. In Chrome, `chrome://webrtc-internals` shows for each connection whether the selected candidate pair is `host`/`srflx` (direct) or `relay` (TURN).
 4. To force the relay in a test, run a separate Chrome with `--force-webrtc-ip-handling-policy=disable_non_proxied_udp`, or block UDP on one test machine. The connection should come up as `relay`.
@@ -101,7 +101,7 @@ After the relay test above succeeds, remove the old `coturn` container (`docker 
 | `TABLE_TTL_DAYS` | `14` | Idle tables are deleted after this. Tables where no hand was ever dealt are deleted after 24 h with nobody connected |
 | `CF_TURN_KEY_ID` | none | Cloudflare Realtime TURN key ID. Without it and the token: STUN only |
 | `CF_TURN_API_TOKEN` | none | The TURN key's API token (server only) |
-| `TURN_TTL_HOURS` | `24` | Lifetime of the credentials browsers get; refreshed an hour before expiry |
+| `TURN_TTL_HOURS` | `4` | Lifetime of the credentials browsers get (minimum 3); refreshed an hour before expiry |
 | `STUN_URLS` | Cloudflare STUN | Comma-separated, only used when TURN is not available |
 | `CF_ACCOUNT_ID` | none | For the usage watch |
 | `CF_ANALYTICS_TOKEN` | none | API token with Account Analytics Read |

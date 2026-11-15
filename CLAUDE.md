@@ -42,7 +42,7 @@ Three source roots, one package:
 
 - `client/src/lib/socket.ts` — single socket instance; `call(event, payload)` wraps emit-with-ack as a Promise that rejects with the server's error message.
 - `client/src/table/TablePage.tsx` holds the latest `TableView` and composes `TopBar`, `Seat`, `Dock` (action buttons), `Drawer` (log/ledger/rules/host tabs), `PhoneSheet`.
-- `client/src/lib/media.ts` — WebRTC mesh. The server only relays `rtc:signal` between sockets on the same table and publishes `rtc:peers`; at least one side of a connection must be a seated player (spectators receive only). ICE/TURN config comes from `GET /api/rtc-config`: `server/turn.ts` fetches short-lived Cloudflare Realtime TURN credentials and watches monthly TURN egress (alerts via `ALERT_WEBHOOK_URL`, TURN off at the free limit).
+- `client/src/lib/media.ts` — WebRTC mesh. The server only relays `rtc:signal` between sockets on the same table and publishes `rtc:peers`; at least one side of a connection must be a seated player (spectators receive only). ICE/TURN config comes from the `rtc:config` socket event (TURN only for sockets at a non-demo table with others present, one shared credential per table): `server/turn.ts` fetches short-lived Cloudflare Realtime TURN credentials and watches monthly TURN egress (alerts via `ALERT_WEBHOOK_URL`, TURN off at the free limit).
 
 ### Rule sets
 
