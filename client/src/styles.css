@@ -81,8 +81,9 @@ input, textarea { caret-color: var(--lamp); }
 ::-webkit-scrollbar-thumb { background: var(--walnut-600); border-radius: 10px; border: 3px solid var(--walnut-900); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* felt nap, drawn with SVG turbulence */
+/* Material textures: tiled inline SVG, with no raster downloads. */
 :root {
+  --wood-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='640' height='320'%3E%3Cfilter id='wood'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.28' numOctaves='3' seed='12' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.6' intercept='-0.3'/%3E%3CfeFuncG type='linear' slope='1.6' intercept='-0.3'/%3E%3CfeFuncB type='linear' slope='1.6' intercept='-0.3'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='0.08' filter='url(%23wood)'/%3E%3C/svg%3E");
   --nap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0.05 0 0 0 0 0.06 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
@@ -250,8 +251,12 @@ input, textarea { caret-color: var(--lamp); }
   position: relative;
   overflow: hidden;
   background:
-    radial-gradient(120% 90% at 50% 45%, transparent 45%, rgba(10, 6, 4, 0.5) 100%),
+    radial-gradient(100% 95% at 50% 42%, transparent 28%, rgba(10, 6, 4, 0.64) 100%),
+    radial-gradient(80% 100% at 50% 36%, rgba(255, 196, 120, 0.12), transparent 72%),
+    var(--wood-grain),
     linear-gradient(180deg, var(--walnut-800), var(--walnut-850));
+  background-size: auto, auto, 640px 320px, auto;
+  background-blend-mode: normal, normal, soft-light, normal;
   isolation: isolate;
 }
 
@@ -260,11 +265,11 @@ input, textarea { caret-color: var(--lamp); }
   position: absolute;
   left: var(--lamp-x, 50%);
   top: var(--lamp-y, 48%);
-  width: min(52vmin, 560px);
+  width: min(64vmin, 680px);
   aspect-ratio: 1;
   translate: -50% -50%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(255, 200, 125, 0.42), rgba(255, 180, 95, 0.16) 50%, transparent 100%);
+  background: radial-gradient(closest-side, rgba(255, 200, 125, 0.32), rgba(255, 180, 95, 0.14) 48%, rgba(255, 180, 95, 0.035) 72%, transparent 100%);
   mix-blend-mode: screen;
   pointer-events: none;
   z-index: 2;
@@ -722,8 +727,12 @@ input, textarea { caret-color: var(--lamp); }
   padding: clamp(72px, 12vh, 132px) 16px 72px;
   position: relative;
   background:
-    radial-gradient(120% 80% at 50% 120%, rgba(0, 0, 0, 0.45), transparent 60%),
+    radial-gradient(105% 80% at 50% 20%, transparent 25%, rgba(10, 6, 4, 0.6) 100%),
+    radial-gradient(85% 65% at 65% 12%, rgba(255, 196, 120, 0.09), transparent 75%),
+    var(--wood-grain),
     linear-gradient(180deg, var(--walnut-800), var(--walnut-850) 55%, var(--walnut-900));
+  background-size: auto, auto, 640px 320px, auto;
+  background-blend-mode: normal, normal, soft-light, normal;
 }
 body:has(.lobby) { overflow: auto; }
 .lobby__mast { position: absolute; top: 18px; left: 20px; z-index: 3; }
@@ -732,9 +741,9 @@ body:has(.lobby) { overflow: auto; }
 /* the lamp over the table: switches on once when the page opens */
 .lobby__lamp {
   position: absolute; z-index: 0; pointer-events: none;
-  width: min(900px, 150vw); aspect-ratio: 1;
-  right: -22%; top: -38%;
-  background: radial-gradient(closest-side, rgba(255, 196, 120, 0.3), rgba(255, 180, 90, 0.1) 55%, transparent);
+  width: min(1050px, 170vw); aspect-ratio: 1.15;
+  right: -28%; top: -42%;
+  background: radial-gradient(closest-side, rgba(255, 196, 120, 0.26), rgba(255, 180, 90, 0.105) 55%, transparent);
   mix-blend-mode: screen;
   animation: lamp-on 1400ms linear both;
 }

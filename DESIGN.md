@@ -163,7 +163,7 @@ components:
 
 **Creative North Star: "The Kitchen Table at 22:00"**
 
-The game is played at a friend's fold-out table, not in a casino. The room is a dark walnut ground (a flat vertical gradient from walnut to deeper walnut, closed by a radial vignette), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.
+The game is played at a friend's fold-out table, not in a casino. The room is a dark walnut ground (a vertical gradient with a barely visible horizontal wood grain, a broad warm light pool and darker vignetted edges), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.
 
 One lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or teal, quiet and legible at night.
 
@@ -236,7 +236,7 @@ Spacing is an ad hoc 4 / 8 / 10 / 14 / 16 / 22px rhythm; dock and lobby padding 
 
 ## Elevation & Depth
 
-Depth is physical and sparse: the room is flat and vignetted, the felt sits on a dark rail ring with a deep drop shadow and an inset shading at its top edge, and only physical objects (cards, chips, dealer button) and floating surfaces (sheets, toasts, the overlay drawer) cast shadows. Panels and bars are flat walnut separated by hairlines.
+Depth is physical and sparse: the room has subtle grain, diffuse warm lighting and vignetted edges, the felt sits on a dark rail ring with a deep drop shadow and an inset shading at its top edge, and only physical objects (cards, chips, dealer button) and floating surfaces (sheets, toasts, the overlay drawer) cast shadows. Panels and bars are flat walnut separated by hairlines.
 
 ### Shadow Vocabulary
 - **Felt on rail** (`box-shadow: 0 0 0 clamp(10px,1.5vmin,18px) var(--rail), 0 0 0 calc(… + 1px) rgba(239,231,214,.08), inset 0 2px 30px rgba(0,0,0,.45), 0 40px 80px -20px rgba(0,0,0,.7)`): every felt surface, including the lobby form (14px rail) and the buy-in sheet (10px rail).
@@ -287,7 +287,7 @@ The top bar is the only navigation: wordmark (800 weight, with a small red/bone 
 A face frame over a nameplate. The frame holds live video (mirrored for yourself) or large initials on a walnut radial. The nameplate carries name (650) and stack (800). Status tags (Fold, Check, Raise to…) are small dark pills top-right; the winner tag inverts to bone. Acting: frame and plate border turn lamp, lamp glow lifts beneath, and a 4px lamp timer bar runs under the plate. Folded: video greys and dims, name struck through. Speaking: bone border. Empty seats are dashed outlines that take a lamp border only on hover when you can sit.
 
 ### Lamp (signature)
-A circular radial pool of warm light (min(52vmin, 560px)), screen-blended over the room, positioned 18% of the way from the acting seat toward centre. It slides over 900ms on the house ease-out and fades to 55% between turns.
+A circular radial pool of warm light (min(64vmin, 680px)), with a soft extended falloff, screen-blended over the room, positioned 18% of the way from the acting seat toward centre. It slides over 900ms on the house ease-out and fades to 55% between turns. A quieter, stationary light pool anchors the table beneath it.
 
 ### Blind Clock (signature)
 Current level and blinds (title size) beside an exact-length 5px bar that drains in bone-2, with remaining time and next level beneath. Breaks turn the bar chip-green, pauses turn it faint. The blind clock is not amber: it is not something you act on.
@@ -316,7 +316,7 @@ On load the lamp switches on over the lobby stage with a short flicker (1.4s: on
 ### Don't:
 - **Don't** draw a green casino oval or grey seat boxes.
 - **Don't** put amber on decoration, headings, labels, tabs, idle states or chip denominations.
-- **Don't** add wood-grain texture to the walnut; the room is a flat gradient with a vignette.
+- **Don't** let the walnut grain become a high-contrast pattern; it should be barely visible, static and built from inline SVG.
 - **Don't** use chip colours for UI states or categories.
 - **Don't** use uppercase tracked labels; labels are sentence case at 12.5–13px.
 - **Don't** ship raster textures or remote font files.
