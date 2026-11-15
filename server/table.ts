@@ -36,6 +36,10 @@ export interface Player {
   camOn: boolean;
   micOn: boolean;
   stats?: PlayerStats;
+  /** Ids of players this player busted, one entry per bust (rebuys can repeat a name). */
+  knockouts?: string[];
+  /** Strongest hand this player showed down. */
+  bestHand?: { score: number; name: string; cards: Card[] };
   /** Played by the server (demo tables). */
   bot?: boolean;
   /** runtime only */
@@ -86,6 +90,8 @@ interface Hand {
   finished: boolean;
   runout: boolean;
   equity?: Record<string, number>;
+  /** Who won each pot at showdown, to credit knockouts. */
+  potWinners?: { eligible: string[]; winners: string[] }[];
 }
 
 interface Clock {
@@ -1112,6 +1118,7 @@ export class Table {
     const pots = this.computePots();
     const won = new Map<string, { amount: number; hand: string; cards: Card[] }>();
     // seat order starting left of the dealer for odd chips
+    h.potWinners = [];
     const dealerIndex = h.players.findIndex(p => p.seat === h.dealerSeat);
     const order = [...h.players.slice(dealerIndex + 1), ...h.players.slice(0, dealerIndex + 1)];
     for (const pot of pots) {
@@ -1119,6 +1126,7 @@ export class Table {
       if (!elig.length) continue;
       const best = Math.max(...elig.map((id) => values.get(id)!.score));
       const winners = order.filter((x) => elig.includes(x.id) && values.get(x.id)!.score === best);
+      h.potWinners.push({ eligible: elig, winners: winners.map((w) => w.id) });
       const share = Math.floor(pot.amount / winners.length);
       let odd = pot.amount - share * winners.length;
       for (const w of winners) {
@@ -1132,6 +1140,8 @@ export class Table {
     }
     for (const x of contenders) {
       const v = values.get(x.id)!;
+      const p = this.player(x.id);
+      if (p && contenders.length > 1 && v.score > (p.bestHand?.score ?? -1)) p.bestHand = { score: v.score, name: v.name, cards: v.cards };
       this.addLog('hand', `${this.name(x.id)} viser ${x.hole.join(' ')} (${v.name})`);
     }
     h.winners = [];
@@ -1168,6 +1178,12 @@ export class Table {
     // bust-outs sit out until they rebuy
     for (const hp of h.players) {
       const p = this.player(hp.id);
+      if (p && p.stack === 0) {
+        // Credit the winners of the last pot the busted player could win; a split pot credits each winner.
+        const pot = [...h.potWinners ?? []].reverse().find((x) => x.eligible.includes(hp.id));
+        const knockers = (pot?.winners ?? h.winners?.map((w) => w.playerId) ?? []).filter((id) => id !== hp.id);
+        for (const id of knockers) { const k = this.player(id); if (k) (k.knockouts ??= []).push(hp.id); }
+      }
       if (p && p.status === 'seated' && p.stack === 0) {
         const offer = this.rebuyOffer(p);
         this.addLog('system', offer?.allowed ? `${p.name} er tom for chips og kan gjøre rebuy.` : `${p.name} er tom for chips.`);

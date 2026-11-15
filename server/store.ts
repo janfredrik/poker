@@ -32,9 +32,10 @@ export function archiveResult(t: Table) {
     const finishedAt = t.finishedAt ?? t.lastActive;
     const night: SeasonNight = {
       id: t.id, name: t.settings.name, finishedAt, year: new Date(finishedAt).getFullYear(),
-      currency: view.results?.currency ?? null, players: rankedResults(view).map((p) => {
+      currency: view.results?.currency ?? null, playedMs: t.played(), players: rankedResults(view).map((p) => {
         const player = t.player(p.id);
-        return { ...p, stats: player?.stats, rebuys: player?.rebuys ?? 0, addOn: player?.addOnTaken ?? false };
+        return { ...p, stats: player?.stats, rebuys: player?.rebuys ?? 0, addOn: player?.addOnTaken ?? false,
+          knockouts: player?.knockouts ?? [], bestHand: player?.bestHand ?? null };
       }),
     };
     atomicWrite(file, JSON.stringify(night));

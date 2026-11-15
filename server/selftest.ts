@@ -279,6 +279,34 @@ for (const boardSize of [0, 3, 4, 5]) {
   }
 }
 
+// A bust credits the knockout to whoever won the pot, and showdowns keep each player's best hand.
+{
+  const t = new Table({ name: 'ko', maxSeats: 2, requireApproval: false, rules: { ...rs('cash-10-20'), turnSeconds: 0 } });
+  const ps = ['A', 'B'].map((name, i) => t.createPlayer(name, i === 0));
+  ps.forEach((p, i) => { p.connections = 1; t.requestSeat(p, i + 1, p.name, 2000); });
+  t.start(ps[0].id);
+  while (!t.hand) await sleep(1);
+  const h = t.hand;
+  const small = t.player(h.players[h.toAct!].id)!;
+  const big = ps.find((p) => p !== small)!;
+  // Board 2h 7d 9c Jd Ks: aces beat eight-high.
+  h.deck = ['Ks', '3c', 'Jd', '4c', '9c', '7d', '2h', '5c'];
+  h.players.find((x) => x.id === big.id)!.hole = ['As', 'Ad'];
+  h.players.find((x) => x.id === small.id)!.hole = ['8s', '6h'];
+  t.act(small.id, 'allin');
+  t.act(big.id, 'call');
+  while (!h.finished) await sleep(1);
+  assert(small.stack === 0, 'loser is busted');
+  deepStrictEqual(big.knockouts, [small.id]);
+  assert(!small.knockouts?.length, 'the busted player gets no knockout');
+  assert(big.bestHand?.name === madeHandName(['As', 'Ad', '2h', '7d', '9c', 'Jd', 'Ks']) && small.bestHand != null, 'best hands are kept');
+  const restored = Table.restore(structuredClone(t.snapshot()));
+  deepStrictEqual(restored.player(big.id)!.knockouts, [small.id]);
+  deepStrictEqual(restored.player(big.id)!.bestHand, big.bestHand);
+  restored.dispose();
+  t.dispose();
+}
+
 // payouts: buy-ins to 1st, rebuys rotate over 3 places
 {
   const { payoutAmounts } = await import('../shared/presets');

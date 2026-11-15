@@ -28,8 +28,16 @@ export interface SeasonNight {
   finishedAt: number;
   year: number;
   currency: string | null;
-  /** rebuys/addOn are missing on nights archived before they were recorded. */
-  players: (ReturnType<typeof rankedResults>[number] & { stats?: PlayerStats; rebuys?: number; addOn?: boolean })[];
+  /** Play time excluding pauses. Missing on nights archived before it was recorded. */
+  playedMs?: number;
+  /** rebuys, addOn, knockouts and bestHand are missing on nights archived before they were recorded. */
+  players: (ReturnType<typeof rankedResults>[number] & {
+    stats?: PlayerStats; rebuys?: number; addOn?: boolean;
+    /** Night player ids this player busted, one per bust. */
+    knockouts?: string[];
+    /** Strongest hand shown down; score compares across nights. */
+    bestHand?: { score: number; name: string; cards: string[] } | null;
+  })[];
 }
 
 export function seasonStandings(nights: SeasonNight[]) {
