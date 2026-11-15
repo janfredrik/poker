@@ -5,7 +5,7 @@ Self-hosted No-Limit Texas Hold'em for home games with friends, with built-in vi
 - **Create a table** with a rule set: blind structure, level length, breaks, rebuy period, max rebuys, add-on, shot clock.
 - **Share the link.** Friends pick a seat, enter a name and a buy-in. No accounts.
 - **The server deals**, enforces betting (min-raise, short all-ins, side pots, split pots), runs the blind clock and settles hands.
-- **Camera and microphone** per seat over WebRTC, with a TURN relay (coturn) for players behind strict NAT.
+- **Camera and microphone** per seat over WebRTC, peer-to-peer first, with Cloudflare Realtime TURN as the relay for players behind strict NAT.
 - **Ledger** of buy-ins, rebuys, cash-outs and net results.
 - **Season standings** in the lobby show each finished tournament and calendar-year totals by player name. Use the same name each night. Net totals use the agreed settlement currency. The player stats tab tracks VPIP, PFR, showdowns won and the biggest pot collected in chips. Results stay in `DATA_DIR/results` after tables close or expire. Existing finished table files contribute their standings on upgrade. Hand stats begin with the first hand tracked.
 - **Survives restarts.** Tables, ledgers and saved rule sets live in `/data`. A hand interrupted by a restart is voided and the bets are returned.
@@ -41,49 +41,75 @@ Open http://localhost:5173. Camera and microphone work on `localhost` without HT
    ```bash
    cp .env.example .env
    ```
-   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`). Fill in `PUBLIC_HOST`, `TURN_HOST`, `PUBLIC_IP`, a random `TURN_SECRET` (`openssl rand -hex 32`) and `DATA_PATH`.
+   Set `POKER_IMAGE` to your image (`ghcr.io/<github-user>/<repo>:latest`) and `DATA_PATH`, then fill in the Cloudflare values (see [Video relay](#video-relay-cloudflare-turn)).
 2. Pull and start (the image is built by GitHub Actions on every push to `main`):
    ```bash
    docker compose pull && docker compose up -d
    ```
 3. Add the web/nginx site in [deploy/nginx-poker.conf](deploy/nginx-poker.conf): set your hostname, certificate paths and the Unraid IP/port in `proxy_pass`. It forwards the WebSocket upgrade that the game needs. **HTTPS is required** for camera and microphone.
-4. Forward these ports on your router to the instance:
+4. Forward only `443/TCP` (nginx) on your router. Do not expose `3000`; only web/nginx on the LAN talks to it. No TURN or media ports are needed at home.
 
-   | Port | Protocol | For |
-   |---|---|---|
-   | `443` | TCP | nginx (the game and its WebSocket) |
-   | `3478` | UDP and TCP | coturn (STUN/TURN) |
-   | `49160-49200` | UDP | coturn relay ports (the actual audio/video) |
+### Behind Cloudflare's proxy
 
-   Do not expose `3000`; only web/nginx on the LAN talks to it. coturn uses host networking.
+The game works through Cloudflare's proxy (orange cloud) and your nginx as before: WebSockets are supported and Socket.IO pings every 25 s, well inside Cloudflare's 100 s idle timeout. Use SSL mode **Full (strict)** with a Let's Encrypt or Cloudflare Origin certificate in nginx. No Cloudflare Tunnel is needed.
 
-The compose file caps coturn at ~4 Mbit/s per relay allocation and 40 allocations in total (`--max-bps`, `--user-quota`, `--total-quota`); the 41 relay ports are a hard ceiling anyway. Widen the port range and raise `--total-quota` together if a big table runs out.
+Port `443` only has to accept traffic from Cloudflare; you can restrict it to [Cloudflare's IP ranges](https://www.cloudflare.com/ips/) in the router or firewall.
 
-Without the TURN ports most players still connect peer-to-peer; the relay is for those behind strict NAT or mobile networks. If you don't want video at all, remove the `coturn` service.
+Health check: `GET /api/health` (also shows this month's TURN usage).
 
-### Behind proxy
+### Video relay (Cloudflare TURN)
 
-The game itself works through Cloudflare's proxy (orange cloud): WebSockets are supported and Socket.IO pings every 25 s, well inside Cloudflare's 100 s idle timeout. Use SSL mode **Full (strict)** with a Let's Encrypt or Cloudflare Origin certificate in nginx.
+Camera and microphone go **peer-to-peer** between browsers whenever possible. When two players can't reach each other directly (strict NAT, some mobile and corporate networks), the browser falls back to Cloudflare's TURN relay at `turn.cloudflare.com`, including TURN over TLS on port 443 that gets through most firewalls. Media is end-to-end encrypted (DTLS-SRTP), so the relay can't see or hear it. Players see each other's IP addresses on direct connections, as with any peer-to-peer video.
 
-TURN does not: Cloudflare's proxy only carries HTTP(S), not raw UDP. So:
+1. In the Cloudflare dashboard, go to **Realtime > TURN Server** and create a TURN key. Put its **Key ID** in `CF_TURN_KEY_ID` and its **API token** in `CF_TURN_API_TOKEN`. The token stays on the server; `GET /api/rtc-config` hands each browser short-lived credentials (24 h by default, refreshed automatically on long nights).
+2. For usage alerts, create an API token under **My Profile > API Tokens** with the permission **Account > Account Analytics > Read**, and set `CF_ACCOUNT_ID` (the 32-character ID in the dashboard URL) and `CF_ANALYTICS_TOKEN`.
+3. Set `ALERT_WEBHOOK_URL` to where you want alerts (below), then restart the container. The log should say `[turn] watching TURN usage: ...`.
 
-- `PUBLIC_HOST` (e.g. `poker.example.com`): proxied, orange cloud.
-- `TURN_HOST` (e.g. `turn.example.com`): an A record to your WAN IP, **DNS only (grey cloud)**. This exposes your home IP, which TURN needs anyway.
+If the Cloudflare API is unreachable, `/api/rtc-config` falls back to STUN only (direct video keeps working) and clients retry after a few minutes.
 
-Port `443` then only has to accept traffic from Cloudflare; you can restrict it to [Cloudflare's IP ranges](https://www.cloudflare.com/ips/) in the router or firewall. The TURN ports must stay open to everyone. If your WAN IP changes, update the `TURN_HOST` record and `PUBLIC_IP`, then restart coturn.
+**Cost.** Cloudflare includes 1 000 GB of Realtime traffic per month (shared by TURN, SFU and MoQ), then $0.05/GB. Only relayed connections count. Even with all video of a 7-player table relayed, that is roughly 20 GB per hour of play.
 
-Health check: `GET /api/health`.
+**Alerts.** Every 15 minutes the server reads the account's TURN egress for the current billing period from Cloudflare's GraphQL Analytics API (it lags about a minute). It sends one alert per period at each of `TURN_WARN_PERCENT` (50, 80, 95 %) and at 100 %, and one if it can't read the usage at all. At 100 % it stops handing out TURN credentials until the next period (`TURN_STOP_AT_LIMIT=true`), so you are never billed; players who connect directly notice nothing. Alerts always go to the container log, and are POSTed to `ALERT_WEBHOOK_URL`:
+
+- **Home Assistant** (phone push via the companion app): an automation with a *Webhook* trigger (allow `POST`, untick "only accessible from local network" if Home Assistant is not on the same network), and the action `notify.mobile_app_<phone>` with `title: "{{ trigger.json.title }}"` and `message: "{{ trigger.json.message }}"`. Use `http://<ha>:8123/api/webhook/<id>` as the URL.
+- **Discord / Slack**: an incoming-webhook URL; `content` / `text` are in the JSON.
+- **ntfy**: `https://ntfy.sh/<secret-topic>` with `ALERT_WEBHOOK_FORMAT=text`.
+
+As a second line of defence in Cloudflare itself, add a budget alert under **Manage Account > Billing > Billable Usage > Create budget alert** with a threshold of $1 and your email. It only fires once there is actual spend (past the free 1 000 GB), so it catches the case where the app's own watch is broken. Under **Notifications > Add**, check whether *Usage Based Billing* offers Realtime TURN for your account as well.
+
+The included traffic follows Cloudflare's billing period. If yours doesn't start on the 1st, set `TURN_BILLING_DAY`.
+
+### Testing the relay
+
+1. `curl -s https://poker.example.com/api/rtc-config` should list `stun:stun.cloudflare.com` and `turn:turn.cloudflare.com` / `turns:` URLs with a username and an `expiresAt`. No URLs on port 53 (browsers block them).
+2. Test the relay alone: open [Trickle ICE](https://webrtc.github.io/samples/src/content/peerconnection/trickle-ice/), add one `turns:turn.cloudflare.com:443?transport=tcp` URL with the username and credential from step 1, and gather: a candidate of type **relay** means TURN works.
+3. Test across networks: one player on home Wi-Fi, one on a phone with Wi-Fi off (mobile data), ideally one on a work or guest network. Everyone should see and hear each other. In Chrome, `chrome://webrtc-internals` shows for each connection whether the selected candidate pair is `host`/`srflx` (direct) or `relay` (TURN).
+4. To force the relay in a test, run a separate Chrome with `--force-webrtc-ip-handling-policy=disable_non_proxied_udp`, or block UDP on one test machine. The connection should come up as `relay`.
+5. A few minutes later, **Realtime > TURN Server** in the dashboard and `GET /api/health` should show the traffic.
+
+### Moving from coturn
+
+After the relay test above succeeds, remove the old `coturn` container (`docker compose up -d --remove-orphans`), close router forwards `3478` UDP/TCP and `49160-49200` UDP, and delete the grey-cloud `TURN_HOST` DNS record. `TURN_HOST`, `PUBLIC_IP`, `TURN_SECRET`, `TURN_URLS` are no longer used.
 
 ## Environment
 
 | Variable | Default | |
 |---|---|---|
 | `PORT` | `3000` | HTTP port inside the container |
-| `DATA_DIR` | `/data` | Tables, ledgers, rule sets |
-| `STUN_URLS` | Google STUN | Comma-separated |
-| `TURN_URLS` | none | Comma-separated `turn:` URLs (compose builds them from `TURN_HOST`) |
-| `TURN_SECRET` | none | Shared with coturn `static-auth-secret`. Credentials handed to browsers last 6 hours and are refreshed automatically |
+| `DATA_DIR` | `/data` | Tables, ledgers, rule sets, TURN usage state |
 | `TABLE_TTL_DAYS` | `14` | Idle tables are deleted after this |
+| `CF_TURN_KEY_ID` | none | Cloudflare Realtime TURN key ID. Without it and the token: STUN only |
+| `CF_TURN_API_TOKEN` | none | The TURN key's API token (server only) |
+| `TURN_TTL_HOURS` | `24` | Lifetime of the credentials browsers get; refreshed an hour before expiry |
+| `STUN_URLS` | Cloudflare STUN | Comma-separated, only used when TURN is not available |
+| `CF_ACCOUNT_ID` | none | For the usage watch |
+| `CF_ANALYTICS_TOKEN` | none | API token with Account Analytics Read |
+| `TURN_MONTHLY_GB` | `1000` | Free allowance the alerts are measured against |
+| `TURN_WARN_PERCENT` | `50,80,95` | Alert thresholds; 100 % always alerts |
+| `TURN_STOP_AT_LIMIT` | `true` | Stop handing out TURN credentials at 100 % until the next period |
+| `TURN_BILLING_DAY` | `1` | Day of month the billing period starts (1-28) |
+| `ALERT_WEBHOOK_URL` | none | Where alerts are POSTed |
+| `ALERT_WEBHOOK_FORMAT` | `json` | `json` (`title`, `message`, `text`, `content`, `usedGB`, `limitGB`, `percent`) or `text` (ntfy) |
 
 ## Development
 

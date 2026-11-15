@@ -88,11 +88,13 @@ class MediaMesh {
     if (this.iceServers && Date.now() < this.iceRefreshAt) return this.iceServers;
     try {
       const res = await fetch('/api/rtc-config');
-      const body = await res.json() as { iceServers: RTCIceServer[]; expiresAt?: number };
+      if (!res.ok) throw new Error(`rtc-config ${res.status}`);
+      const body = await res.json() as { iceServers?: RTCIceServer[]; expiresAt?: number };
+      if (!Array.isArray(body.iceServers)) throw new Error('rtc-config without iceServers');
       this.iceServers = body.iceServers;
       this.iceRefreshAt = body.expiresAt ? body.expiresAt - 3600_000 : Infinity;
     } catch {
-      this.iceServers ??= [{ urls: 'stun:stun.l.google.com:19302' }];
+      this.iceServers ??= [{ urls: 'stun:stun.cloudflare.com:3478' }];
       this.iceRefreshAt = Date.now() + 60_000;
     }
     return this.iceServers;

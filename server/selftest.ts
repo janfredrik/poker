@@ -407,6 +407,46 @@ for (const boardSize of [0, 3, 4, 5]) {
   t.dispose();
 }
 
+// Cloudflare TURN: credentials, port-53 filtering, fallback, usage periods and alert thresholds
+{
+  process.env.CF_TURN_KEY_ID = 'k'.repeat(32);
+  process.env.CF_TURN_API_TOKEN = 'secret-token';
+  const turn = await import('./turn');
+  const realFetch = globalThis.fetch;
+  let sent: { url: string; init?: RequestInit } | undefined;
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    sent = { url: String(url), init };
+    return new Response(JSON.stringify({ iceServers: [
+      { urls: ['stun:stun.cloudflare.com:3478', 'stun:stun.cloudflare.com:53'] },
+      { urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turn:turn.cloudflare.com:53?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u', credential: 'c' },
+    ] }), { status: 201 });
+  }) as typeof fetch;
+  const cfg = await turn.rtcConfig();
+  assert(sent?.url.endsWith(`/v1/turn/keys/${'k'.repeat(32)}/credentials/generate-ice-servers`), 'turn: calls generate-ice-servers');
+  assert((sent?.init?.headers as Record<string, string>).Authorization === 'Bearer secret-token', 'turn: bearer token');
+  assert(JSON.parse(String(sent?.init?.body)).ttl === 86400, 'turn: 24 h ttl');
+  const urls = cfg.iceServers.flatMap((x) => x.urls);
+  assert(urls.length === 3 && !urls.some((u) => u.includes(':53')), 'turn: port 53 dropped');
+  assert(cfg.iceServers[1].username === 'u' && cfg.iceServers[1].credential === 'c', 'turn: credentials passed through');
+  assert(!!cfg.expiresAt && Math.abs(cfg.expiresAt - Date.now() - 86400_000) < 5000, 'turn: expiresAt');
+  globalThis.fetch = (async () => new Response('nope', { status: 500 })) as unknown as typeof fetch;
+  const fallback = await turn.rtcConfig();
+  assert(fallback.iceServers.length === 1 && !fallback.iceServers[0].username, 'turn: STUN-only fallback on API error');
+  assert(!!fallback.expiresAt && fallback.expiresAt - 3600_000 - Date.now() <= 5 * 60_000 + 1000, 'turn: fallback asks clients to retry soon');
+  globalThis.fetch = realFetch;
+
+  assert(turn.periodStart(new Date('2026-11-15T12:00:00Z'), 1) === '2026-11-01', 'turn: period from the 1st');
+  assert(turn.periodStart(new Date('2026-11-15T12:00:00Z'), 20) === '2026-10-20', 'turn: period before billing day');
+  assert(turn.periodStart(new Date('2026-01-05T00:00:00Z'), 10) === '2025-12-10', 'turn: period across new year');
+  assert(turn.periodStart(new Date('2026-11-20T00:00:00Z'), 20) === '2026-11-20', 'turn: period on billing day');
+  const G = 1e9;
+  deepStrictEqual(turn.newThresholds(400 * G, 1000 * G, [], [50, 80, 95]), []);
+  deepStrictEqual(turn.newThresholds(820 * G, 1000 * G, [], [50, 80, 95]), [50, 80]);
+  deepStrictEqual(turn.newThresholds(820 * G, 1000 * G, [50], [50, 80, 95]), [80]);
+  deepStrictEqual(turn.newThresholds(1000 * G, 1000 * G, [50, 80, 95], [50, 80, 95]), [100]);
+  deepStrictEqual(turn.newThresholds(1200 * G, 1000 * G, [50, 80, 95, 100], [50, 80, 95]), []);
+}
+
 let totalHands = 0;
 for (let i = 0; i < 400; i++) {
   const r = await run(i + 1, 2 + (i % 8), i % BUILT_IN_RULESETS.length);

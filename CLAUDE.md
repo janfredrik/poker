@@ -42,7 +42,7 @@ Three source roots, one package:
 
 - `client/src/lib/socket.ts` — single socket instance; `call(event, payload)` wraps emit-with-ack as a Promise that rejects with the server's error message.
 - `client/src/table/TablePage.tsx` holds the latest `TableView` and composes `TopBar`, `Seat`, `Dock` (action buttons), `Drawer` (log/ledger/rules/host tabs), `PhoneSheet`.
-- `client/src/lib/media.ts` — WebRTC mesh. The server only relays `rtc:signal` between sockets on the same table and publishes `rtc:peers`; at least one side of a connection must be a seated player (spectators receive only). ICE/TURN config comes from `GET /api/rtc-config` (coturn shared-secret HMAC credentials).
+- `client/src/lib/media.ts` — WebRTC mesh. The server only relays `rtc:signal` between sockets on the same table and publishes `rtc:peers`; at least one side of a connection must be a seated player (spectators receive only). ICE/TURN config comes from `GET /api/rtc-config`: `server/turn.ts` fetches short-lived Cloudflare Realtime TURN credentials and watches monthly TURN egress (alerts via `ALERT_WEBHOOK_URL`, TURN off at the free limit).
 
 ### Rule sets
 
@@ -50,7 +50,7 @@ Three source roots, one package:
 
 ## Deployment
 
-One Docker image (`Dockerfile`) plus a coturn service in `docker-compose.yml`, behind the owner's nginx (`deploy/nginx-poker.conf`, must forward the WebSocket upgrade; HTTPS required for camera/mic). Env vars are documented in the README (`PORT`, `DATA_DIR`, `STUN_URLS`, `TURN_URLS`, `TURN_SECRET`, `TABLE_TTL_DAYS`).
+One Docker image (`Dockerfile`, the only service in `docker-compose.yml`) behind the owner's nginx (`deploy/nginx-poker.conf`, must forward the WebSocket upgrade; HTTPS required for camera/mic). Env vars are documented in the README (`PORT`, `DATA_DIR`, `TABLE_TTL_DAYS`, `CF_TURN_*`, `CF_ACCOUNT_ID`, `CF_ANALYTICS_TOKEN`, `TURN_*`, `ALERT_WEBHOOK_*`). The relay is Cloudflare's, so no TURN ports are open at home.
 
 ## Conventions
 

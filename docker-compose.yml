@@ -1,4 +1,5 @@
-# Poker: game server + TURN relay for video.
+# Poker game server. Video goes peer-to-peer, with Cloudflare Realtime TURN as the relay
+# for players who can't connect directly (no TURN ports need to be open at home).
 # Copy .env.example to .env and fill it in before `docker compose up -d`.
 services:
   poker:
@@ -10,37 +11,16 @@ services:
       - "${POKER_PORT:-3000}:3000"          # nginx proxies to this
     environment:
       - TZ=${TZ:-Europe/Oslo}
-      - STUN_URLS=stun:${TURN_HOST:-${PUBLIC_HOST}}:3478
-      - TURN_URLS=turn:${TURN_HOST:-${PUBLIC_HOST}}:3478?transport=udp,turn:${TURN_HOST:-${PUBLIC_HOST}}:3478?transport=tcp
-      - TURN_SECRET=${TURN_SECRET}
       - TABLE_TTL_DAYS=14
+      - CF_TURN_KEY_ID=${CF_TURN_KEY_ID:-}
+      - CF_TURN_API_TOKEN=${CF_TURN_API_TOKEN:-}
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID:-}
+      - CF_ANALYTICS_TOKEN=${CF_ANALYTICS_TOKEN:-}
+      - TURN_MONTHLY_GB=${TURN_MONTHLY_GB:-1000}
+      - TURN_WARN_PERCENT=${TURN_WARN_PERCENT:-50,80,95}
+      - TURN_STOP_AT_LIMIT=${TURN_STOP_AT_LIMIT:-true}
+      - TURN_BILLING_DAY=${TURN_BILLING_DAY:-1}
+      - ALERT_WEBHOOK_URL=${ALERT_WEBHOOK_URL:-}
+      - ALERT_WEBHOOK_FORMAT=${ALERT_WEBHOOK_FORMAT:-json}
     volumes:
       - ${DATA_PATH:-./data}:/data
-
-  coturn:
-    image: coturn/coturn:4.6
-    container_name: poker-coturn
-    restart: unless-stopped
-    network_mode: host                      # TURN needs a wide UDP range; host networking is simplest on Unraid
-    command:
-      - -n
-      - --log-file=stdout
-      - --listening-port=3478
-      - --fingerprint
-      - --use-auth-secret
-      - --static-auth-secret=${TURN_SECRET}
-      - --realm=${TURN_HOST:-${PUBLIC_HOST}}
-      - --external-ip=${PUBLIC_IP}
-      - --min-port=49160
-      - --max-port=49200
-      # Caps for a home game. The 41 relay ports above are already a hard ceiling on allocations.
-      - --max-bps=500000                    # ~4 Mbit/s per allocation; a 640x480 camera uses ~1-1.5 Mbit/s
-      - --user-quota=20                     # allocations per credential (one browser: 2 per peer, UDP + TCP)
-      - --total-quota=40
-      - --no-cli
-      - --no-tls
-      - --no-dtls
-      - --no-multicast-peers
-      - --denied-peer-ip=10.0.0.0-10.255.255.255
-      - --denied-peer-ip=172.16.0.0-172.31.255.255
-      - --denied-peer-ip=192.168.0.0-192.168.255.255

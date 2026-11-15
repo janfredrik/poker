@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Node.js + TypeScript server (Socket.IO) owning all game logic, React + Vite client. Shipped as one Docker image for Unraid, running behind the owner's existing nginx reverse proxy. A coturn container in the same compose file relays WebRTC media when peers cannot connect directly.
+Node.js + TypeScript server (Socket.IO) owning all game logic, React + Vite client. Shipped as one Docker image for Unraid, running behind the owner's existing nginx reverse proxy. WebRTC media goes peer-to-peer, with Cloudflare Realtime TURN relaying it when peers cannot connect directly.
 
 ## Purpose
 

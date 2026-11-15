@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -11,6 +11,7 @@ import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
 import { archiveResult, deleteRuleSet, deleteTableFile, flushAll, listResults, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
 import { createDemoTable, driveBots } from './demo';
+import { rtcConfig, startUsageWatch, usageSummary } from './turn';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,27 +44,21 @@ app.disable('x-powered-by');
 app.set('trust proxy', true);
 app.use(express.json({ limit: '64kb' }));
 
-app.get('/api/health', (_req, res) => { res.json({ ok: true, tables: tables.size }); });
+app.get('/api/health', (_req, res) => { res.json({ ok: true, tables: tables.size, turn: usageSummary() }); });
 
-/** Lifetime of a TURN credential. Clients refetch before it runs out. */
-const TURN_TTL_S = 6 * 3600;
+/** ICE servers for WebRTC: Cloudflare TURN credentials (see turn.ts), rate-limited per client IP. */
+const rtcHits = new Map<string, { n: number; reset: number }>();
+const RTC_WINDOW_MS = 10 * 60 * 1000;
+const RTC_MAX_PER_WINDOW = 60;   // a whole household behind one IP reloading a few times is fine
 
-/** ICE servers for WebRTC. TURN credentials follow coturn's use-auth-secret (REST API) scheme. */
-app.get('/api/rtc-config', (_req, res) => {
-  const iceServers: RTCIceServerLike[] = [];
-  const stun = (process.env.STUN_URLS ?? 'stun:stun.l.google.com:19302').split(',').map((s) => s.trim()).filter(Boolean);
-  if (stun.length) iceServers.push({ urls: stun });
-  const turnUrls = (process.env.TURN_URLS ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  const secret = process.env.TURN_SECRET;
-  let expiresAt: number | undefined;
-  if (turnUrls.length && secret) {
-    const expiry = Math.floor(Date.now() / 1000) + TURN_TTL_S;
-    const username = `${expiry}:poker`;
-    const credential = createHmac('sha1', secret).update(username).digest('base64');
-    iceServers.push({ urls: turnUrls, username, credential });
-    expiresAt = expiry * 1000;
-  }
-  res.json({ iceServers, expiresAt });
+app.get('/api/rtc-config', async (req, res) => {
+  const ip = req.ip ?? '?';
+  const now = Date.now();
+  let hit = rtcHits.get(ip);
+  if (!hit || now > hit.reset) { hit = { n: 0, reset: now + RTC_WINDOW_MS }; rtcHits.set(ip, hit); }
+  if (++hit.n > RTC_MAX_PER_WINDOW) { res.status(429).json({ error: 'For mange forespørsler.' }); return; }
+  if (rtcHits.size > 5000) for (const [k, v] of rtcHits) if (now > v.reset) rtcHits.delete(k);
+  res.set('Cache-Control', 'no-store').json(await rtcConfig());
 });
 
 app.get('/api/season-results', (_req, res) => { res.set('Cache-Control', 'no-store').json(listResults()); });
@@ -85,8 +80,6 @@ if (CLIENT_DIR) {
   } }));
   app.get(/^\/(?!api|socket\.io).*/, (_req, res) => { res.sendFile(join(CLIENT_DIR, 'index.html')); });
 }
-
-interface RTCIceServerLike { urls: string[]; username?: string; credential?: string }
 
 /* ---------------- sockets ---------------- */
 
@@ -360,4 +353,5 @@ const shutdown = () => {
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
+startUsageWatch();
 http.listen(PORT, () => console.log(`[poker] listening on :${PORT}${CLIENT_DIR ? '' : ' (no client build found, API only)'}`));
