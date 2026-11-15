@@ -12,6 +12,7 @@ services:
     environment:
       - TZ=${TZ:-Europe/Oslo}
       - TABLE_TTL_DAYS=14
+      - CREATE_CODE=${CREATE_CODE:-}
       - CF_TURN_KEY_ID=${CF_TURN_KEY_ID:-}
       - CF_TURN_API_TOKEN=${CF_TURN_API_TOKEN:-}
       - CF_ACCOUNT_ID=${CF_ACCOUNT_ID:-}
