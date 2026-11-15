@@ -486,6 +486,162 @@ for (const boardSize of [0, 3, 4, 5]) {
   deepStrictEqual(turn.newThresholds(1200 * G, 1000 * G, [50, 80, 95, 100], [50, 80, 95]), []);
 }
 
+// AI-dealer: events from the log, a context with no hidden cards, toggle rules, nothing called without keys
+{
+  const dealer = await import('./dealer');
+  const { parseEvents, speakableName } = await import('./dealer/events');
+  const { buildContext, publicView } = await import('./dealer/context');
+  const { dealerAvailable } = await import('./dealer/config');
+  const keys = { OPENROUTER_API_KEY: 'or-key', ELEVENLABS_API_KEY: 'el-key', ELEVENLABS_VOICE_ID: 'voice', AZURE_SPEECH_KEY: 'az', AZURE_SPEECH_REGION: 'norwayeast' };
+  const setKeys = (on: boolean) => { for (const [k, v] of Object.entries(keys)) { if (on) process.env[k] = v; else delete process.env[k]; } };
+  const realFetch = globalThis.fetch;
+  const fetched: { url: string; body: string }[] = [];
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    fetched.push({ url: String(url), body: typeof init?.body === 'string' ? init.body : '' });
+    if (String(url).includes('openrouter')) return new Response(JSON.stringify({ choices: [{ message: { content: 'Der røk den. «Pent» spilt likevel. Tredje setning skal bort.' } }] }));
+    return new Response(new Uint8Array([0xff, 0xf3, 1, 2]), { headers: { 'Content-Type': 'audio/mpeg' } });
+  }) as typeof fetch;
+  const said: { text: string; audioUrl: string | null }[] = [];
+  dealer.mountDealer({ get: () => {} } as never, { to: () => ({ emit: (_e: string, m: { text: string; audioUrl: string | null }) => { said.push(m); } }) } as never);
+
+  const holes = [['As', 'Ad'], ['Ks', 'Kd'], ['Qs', 'Qd']];
+  const hidden = (text: string, shown: Set<string>) => holes.flat().filter((c) => !shown.has(c) && new RegExp(`\\b${c}\\b`).test(text));
+  async function dealerHand(withDealer: boolean) {
+    const t = new Table({ name: 'Dealer', maxSeats: 3, requireApproval: false, rules: rs('cash-10-20'), dealer: withDealer });
+    t.onChange = () => dealer.dealerOnChange(t);
+    const ps = [100, 300, 300].map((stack, i) => {
+      const p = t.createPlayer(['Ada', 'Bo', 'Cy'][i], i === 0);
+      p.connections = 1;
+      t.requestSeat(p, i + 1, p.name, stack);
+      return p;
+    });
+    t.status = 'paused';
+    t.lastDealerSeat = 3;
+    t.start(ps[0].id);
+    for (let i = 0; i < 100 && !t.hand; i++) await sleep(2);
+    const h = t.hand!;
+    for (const hp of h.players) hp.hole = holes[t.player(hp.id)!.seat! - 1];
+    h.deck = ['Jd', '6d', '9h', '5d', '7c', '4s', '2h', '3d'];
+    const leaks: string[] = [];
+    while (h.street !== 'river') {
+      leaks.push(...hidden(buildContext(publicView(t)), new Set()));
+      const actor = h.players[h.toAct!].id;
+      t.act(actor, t.legal(actor)!.canCheck ? 'check' : 'call');
+    }
+    while (h.toAct != null) {
+      leaks.push(...hidden(buildContext(publicView(t)), new Set()));
+      t.act(h.players[h.toAct].id, 'allin');
+    }
+    const shown = new Set(publicView(t).players.flatMap((p) => p.shownCards ?? []));
+    leaks.push(...hidden(buildContext(publicView(t)), shown));
+    return { t, leaks };
+  }
+
+  setKeys(false);
+  assert(!dealerAvailable(), 'dealer: off without keys');
+  const off = await dealerHand(true);
+  await sleep(30);
+  assert(fetched.length === 0 && said.length === 0, 'dealer: nothing is called without keys');
+  assert(off.leaks.length === 0, `dealer: context never holds hidden hole cards (${off.leaks.join(' ')})`);
+  const kinds = parseEvents(off.t.log).map((e) => e.kind);
+  const expected = ['hand', 'flop', 'turn', 'river', 'all-in', 'showdown', 'utslått'];
+  let at = 0;
+  for (const k of kinds) if (k === expected[at]) at++;
+  assert(at === expected.length, `dealer: a full hand gives the expected events (got ${kinds.join(', ')})`);
+  off.t.dispose();
+  const more = parseEvents([
+    { t: 0, kind: 'hand', text: 'Ola vinner 1 200 med Two Pair, Kings and Tens' },
+    { t: 0, kind: 'hand', text: 'Ola vinner 300' },
+    { t: 0, kind: 'system', text: 'Nivå 2 · nye blinds 20/40.' },
+    { t: 0, kind: 'system', text: 'Kari ender på 3. plass.' },
+    { t: 0, kind: 'system', text: 'Ola vinner turneringen!' },
+    { t: 0, kind: 'chat', text: 'Ola vinner turneringen!', by: 'Per' },
+  ]);
+  deepStrictEqual(more.map((e) => e.kind), ['showdown', 'nivå', 'plass', 'seier'], 'dealer: tournament events and separators');
+  deepStrictEqual(parseEvents([{ t: 0, kind: 'system', text: 'Kari Nordmann setter seg i sete 4 med 1 000 chips.' }]), [{ kind: 'velkommen', name: 'Kari Nordmann' }], 'dealer: sitting down is a welcome');
+  for (const [raw, want] of [['Kari', 'Kari'], ['Jan-Fredrik', 'Jan-Fredrik'], ['Øyvind Ås', 'Øyvind Ås'], ['OLA', 'Ola'], ["O'Neil", "O'Neil"],
+    ['xX_sniper_Xx', null], ['Ola99', null], ['🃏', null], ['Q', null], ['Brrrt', null], ['Xkcdq', null], ['Jan F', null], ['a b c d', null]] as const) {
+    assert(speakableName(raw) === want, `dealer: speakable name ${raw} → ${want} (got ${speakableName(raw)})`);
+  }
+
+  setKeys(true);
+  assert(dealerAvailable(), 'dealer: on with keys');
+  const on = await dealerHand(true);
+  for (let i = 0; i < 100 && !said.length; i++) await sleep(5);
+  const brainCall = fetched.find((f) => f.url.includes('openrouter'));
+  assert(!!brainCall && said.length === 1, 'dealer: a big moment gets one fresh line');
+  assert(said[0]?.text === 'Der røk den. Pent spilt likevel.', `dealer: line trimmed to two sentences (${said[0]?.text})`);
+  assert(!!said[0]?.audioUrl?.startsWith('/api/dealer/audio/'), 'dealer: line comes with audio');
+  assert(fetched.some((f) => f.url.includes('elevenlabs') && JSON.parse(f.body).model_id === 'eleven_v4_turbo'), 'dealer: fresh line uses the live voice model');
+  on.t.dispose();
+  // welcome by name when someone sits down, once, or just "Velkommen til bordet" for odd names
+  {
+    const t = new Table({ name: 'Velkommen', maxSeats: 4, requireApproval: false, rules: rs('cash-10-20'), dealer: true });
+    t.onChange = () => dealer.dealerOnChange(t);
+    t.addLog('system', 'Bordet er åpnet.');
+    t.onChange();
+    said.length = 0;
+    const seat = async (name: string, s: number) => {
+      const p = t.createPlayer(name);
+      p.connections = 1;
+      t.requestSeat(p, s, name, 1000);
+      for (let i = 0; i < 100 && !said.length; i++) await sleep(5);
+      const line = said.shift()?.text;
+      await sleep(20);
+      return line;
+    };
+    const ada = await seat('Ada', 1);
+    assert(ada === 'Velkommen til bordet, Ada.', `dealer: welcomes by name (${ada})`);
+    const odd = await seat('xX_sniper_Xx', 2);
+    assert(odd === 'Velkommen til bordet.', `dealer: odd names get the plain welcome (${odd})`);
+    t.dispose();
+    dealer.dealerForget(t.id);
+  }
+  const quiet = await dealerHand(false);
+  const before = fetched.length;
+  await sleep(30);
+  assert(fetched.length === before, 'dealer: a table without the dealer stays quiet');
+  quiet.t.dispose();
+
+  // dealer:toggle: host only, before the start, never on demo tables
+  const t = new Table({ name: 'Toggle', maxSeats: 3, requireApproval: false, rules: rs('cash-10-20') });
+  const host = t.createPlayer('Vert', true);
+  const guest = t.createPlayer('Gjest');
+  for (const [i, p] of [host, guest].entries()) { p.connections = 1; t.requestSeat(p, i + 1, p.name, 1000); }
+  const handlers = new Map<string, (input: unknown, ack: (r: { ok: boolean }) => void) => void>();
+  let who = guest;
+  dealer.dealerSocket({ on: (e: string, fn: never) => { handlers.set(e, fn); } } as never, { table: () => t, me: () => ({ t, p: who }) });
+  const toggle = (v: boolean) => new Promise<{ ok: boolean }>((res) => handlers.get('dealer:toggle')!(v, res));
+  assert(!(await toggle(true)).ok && !t.settings.dealer, 'dealer: guests cannot switch her on');
+  who = host;
+  t.demo = true;
+  assert(!(await toggle(true)).ok && !t.settings.dealer, 'dealer: never on a demo table');
+  t.demo = false;
+  assert((await toggle(true)).ok && t.settings.dealer === true, 'dealer: the host switches her on before the start');
+  // push-to-talk: speech-to-text, then an answer to the whole table
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).includes('stt.speech.microsoft.com')) return new Response(JSON.stringify({ RecognitionStatus: 'Success', DisplayText: 'Hvem leder?' }));
+    if (String(url).includes('openrouter')) return new Response(JSON.stringify({ choices: [{ message: { content: 'Ingen ennå.' } }] }));
+    return new Response(new Uint8Array([1, 2, 3]));
+  }) as typeof fetch;
+  const wav = Buffer.alloc(4000); wav.write('RIFF', 0);
+  const ask = (audio: unknown) => new Promise<{ ok: boolean; data?: { heard: string } }>((res) => handlers.get('dealer:ask')!(audio, res as never));
+  said.length = 0;
+  const heard = await ask(wav);
+  assert(heard.ok && heard.data?.heard === 'Hvem leder?', 'dealer: hears what the player said');
+  for (let i = 0; i < 100 && !said.length; i++) await sleep(5);
+  assert((said[0] as { replyTo?: { name: string } })?.replyTo?.name === 'Vert' && said[0]?.text === 'Ingen ennå.', 'dealer: answers the player at the table');
+  assert(!(await ask(wav)).ok, 'dealer: one question per player per 10 s');
+  assert(!(await ask(Buffer.alloc(4000))).ok, 'dealer: rejects audio that is not WAV');
+  t.start(host.id);
+  assert(!(await toggle(false)).ok && t.settings.dealer === true, 'dealer: no switching after the start');
+  t.status = 'paused';
+  t.dispose();
+  dealer.dealerForget(t.id);
+  setKeys(false);
+  globalThis.fetch = realFetch;
+}
+
 let totalHands = 0;
 for (let i = 0; i < 400; i++) {
   const r = await run(i + 1, 2 + (i % 8), i % BUILT_IN_RULESETS.length);

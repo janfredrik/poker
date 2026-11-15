@@ -3,6 +3,7 @@ import type { TableView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
 import { ReactionPicker } from './Reactions';
+import { DealerTalkButton } from '../dealer/DealerTalkButton'; // AI-dealer
 
 interface Props {
   view: TableView;
@@ -111,6 +112,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
           </>
         )}
         {seated && canReact && <ReactionPicker />}
+        <DealerTalkButton view={view} />{/* AI-dealer */}
       </div>
 
       <div className="dock__actions">

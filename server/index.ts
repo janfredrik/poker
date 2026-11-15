@@ -11,6 +11,7 @@ import type { Ack, RtcPeer, RuleSet, TableSettings } from '../shared/types';
 import { archiveResult, deleteRuleSet, deleteTableFile, flushAll, listResults, listRuleSets, loadTables, saveRuleSet, saveTable } from './store';
 import { cleanName, GameError, Table } from './table';
 import { createDemoTable, driveBots } from './demo';
+import { dealerForget, dealerOnChange, dealerSocket, mountDealer } from './dealer'; // AI-dealer
 import { forgetRtcConfig, rtcConfigFor, startUsageWatch, stunOnly, usageSummary } from './turn';
 
 const PORT = Number(process.env.PORT ?? 3000);
@@ -76,6 +77,7 @@ function register(t: Table) {
     if (!t.demo) saveTable(t);
     broadcast(t);
     driveBots(t);
+    dealerOnChange(t); // AI-dealer
   };
 }
 
@@ -110,6 +112,10 @@ app.delete('/api/rulesets/:id', requireCode, (req, res) => {
   res.json({ ok: true });
 });
 
+const http = createServer(app);
+const io = new Server(http, { cors: { origin: process.env.CORS_ORIGIN ?? false }, pingInterval: 10000, pingTimeout: 15000 });
+mountDealer(app, io); // AI-dealer
+
 if (CLIENT_DIR) {
   app.use(express.static(CLIENT_DIR, { index: false, maxAge: '1h', setHeaders: (res, path) => {
     if (path.includes('/assets/')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
@@ -118,9 +124,6 @@ if (CLIENT_DIR) {
 }
 
 /* ---------------- sockets ---------------- */
-
-const http = createServer(app);
-const io = new Server(http, { cors: { origin: process.env.CORS_ORIGIN ?? false }, pingInterval: 10000, pingTimeout: 15000 });
 
 interface SocketData { tableId?: string; playerId?: string }
 type S = Socket & { data: SocketData };
@@ -166,6 +169,7 @@ function sanitizeSettings(input: Partial<TableSettings> & { rules?: Partial<Rule
     maxSeats: 9,
     requireApproval: input?.requireApproval ?? prev?.requireApproval ?? false,
     rules: sanitizeRules(input?.rules, prev?.rules ?? BUILT_IN_RULESETS[0]),
+    dealer: prev?.dealer, // AI-dealer
   };
 }
 
@@ -214,6 +218,7 @@ io.on('connection', (raw) => {
   });
 
   const ip = clientIp(s.request);
+  dealerSocket(s, { table, me }); // AI-dealer
 
   s.on('table:create', (input: { settings: Partial<TableSettings>; hostName: string; code?: string }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
     if (!allowCreate(ip)) throw new GameError('Du har prøvd å åpne for mange bord. Prøv igjen om en time.');
@@ -397,6 +402,7 @@ function drop(t: Table) {
   emptySince.delete(t.id);
   demoOwner.delete(t.id);
   forgetRtcConfig(t.id);
+  dealerForget(t.id); // AI-dealer
   if (!t.demo) deleteTableFile(t.id);
 }
 

@@ -21,6 +21,9 @@ export function unlockAudio() {
   if (ctx?.state === 'suspended') void ctx.resume();
 }
 
+/** The shared audio context (created on first use), or null where Web Audio is missing. */
+export function sharedAudio(): AudioContext | null { unlockAudio(); return ctx; } // AI-dealer
+
 /** Two soft notes: it's your turn. */
 export function yourTurnSound() {
   unlockAudio();

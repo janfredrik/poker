@@ -87,6 +87,8 @@ export interface TableSettings {
   maxSeats: number;
   requireApproval: boolean;
   rules: RuleSet;
+  /** The optional AI dealer is on for this table. */
+  dealer?: boolean; // AI-dealer
 }
 
 export type PlayerStatus = 'watching' | 'pending' | 'seated';

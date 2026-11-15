@@ -14,6 +14,8 @@ import { Drawer, type DrawerTab } from './Drawer';
 import { PhoneSheet } from './PhoneSheet';
 import { Seat } from './Seat';
 import { TopBar } from './TopBar';
+import { DealerSeat } from '../dealer/DealerSeat'; // AI-dealer
+import { DealerToggle } from '../dealer/DealerToggle'; // AI-dealer
 
 type Pt = { x: number; y: number };
 
@@ -394,6 +396,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                       )}
                       <button className="btn btn--quiet" onClick={copyLink}><Link2 size={16} /> {copied ? 'Lenken er kopiert' : 'Kopier invitasjonslenken'}</button>
                     </div>
+                    <DealerToggle view={view} onError={setToast} />{/* AI-dealer */}
                     {view.you.isHost && seatedCount < 2 && <p className="felt__hint">Velg et sete og send lenken til de andre.</p>}
                     {!view.you.isHost && <p className="felt__hint">Verten starter spillet.</p>}
                   </>
@@ -462,6 +465,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             </div>
           );
         })}
+
+        <DealerSeat view={view} tall={tall} />{/* AI-dealer */}
 
         {/* bets and dealer button sit on the felt between the seat and the pot */}
         {view.players.filter((p) => p.status === 'seated' && p.seat).map((p) => {

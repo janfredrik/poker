@@ -44,6 +44,10 @@ Three source roots, one package:
 - `client/src/table/TablePage.tsx` holds the latest `TableView` and composes `TopBar`, `Seat`, `Dock` (action buttons), `Drawer` (log/ledger/rules/host tabs), `PhoneSheet`.
 - `client/src/lib/media.ts` — WebRTC mesh. The server only relays `rtc:signal` between sockets on the same table and publishes `rtc:peers`; at least one side of a connection must be a seated player (spectators receive only). ICE/TURN config comes from the `rtc:config` socket event (TURN only for sockets at a non-demo table with others present, one shared credential per table): `server/turn.ts` fetches short-lived Cloudflare Realtime TURN credentials and watches monthly TURN egress (alerts via `ALERT_WEBHOOK_URL`, TURN off at the free limit).
 
+### AI dealer
+
+Optional, off by default, all in `server/dealer/` and `client/src/dealer/`; every hook elsewhere is marked `// AI-dealer` (see `DEALER.md` for setup and removal). She only reads `t.view(null)` (never `t.hand`), so she can't see hidden cards, and she can't act. `server/dealer/events.ts` is the only place that parses log texts from `table.ts`: if you change a log line there, check it and the dealer selftest block.
+
 ### Rule sets
 
 `RuleSet` (in `shared/types.ts`) drives blinds structure (last level lasts forever), breaks, rebuys, add-on, payouts, shot clock and time bank. Built-ins live in `shared/presets.ts` and can't be deleted; user-saved ones go to `/api/rulesets`. Rule changes mid-game apply from the next hand. The README's rule-set table documents user-facing semantics.
