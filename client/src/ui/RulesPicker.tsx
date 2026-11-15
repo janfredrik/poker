@@ -2,7 +2,10 @@ import { useEffect, useId, useState } from 'react';
 import { Save, Trash2 } from 'lucide-react';
 import type { RuleSet } from '../../../shared/types';
 import { BUILT_IN_RULESETS, formatChips } from '../../../shared/presets';
+import { prefs } from '../lib/socket';
 import { RulesEditor } from './RulesEditor';
+
+const errorText = (res: Response) => res.json().then((b: { error?: string }) => b.error ?? '', () => '');
 
 export function summarize(r: RuleSet): string {
   const l = r.levels[0];
@@ -43,22 +46,23 @@ export function RulesPicker({ value, onChange, currentLevel, startOpen = false }
     setStatus(null);
     try {
       const res = await fetch('/api/rulesets', {
-        method: 'POST', headers: { 'content-type': 'application/json' },
+        method: 'POST', headers: { 'content-type': 'application/json', 'x-create-code': prefs.get('createCode') },
         body: JSON.stringify(selected?.builtIn ? { ...value, id: '' } : value),
       });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error(await errorText(res));
       const saved = (await res.json()) as RuleSet;
       await load();
       onChange(saved);
       setStatus(`Lagret «${saved.name}».`);
-    } catch {
-      setStatus('Kunne ikke lagre regelsettet. Prøv igjen.');
+    } catch (err) {
+      setStatus((err as Error).message || 'Kunne ikke lagre regelsettet. Prøv igjen.');
     }
   };
 
   const remove = async () => {
     if (!selected || selected.builtIn) return;
-    await fetch(`/api/rulesets/${encodeURIComponent(selected.id)}`, { method: 'DELETE' });
+    const res = await fetch(`/api/rulesets/${encodeURIComponent(selected.id)}`, { method: 'DELETE', headers: { 'x-create-code': prefs.get('createCode') } });
+    if (!res.ok) { setStatus(await errorText(res) || 'Kunne ikke slette regelsettet.'); return; }
     await load();
     onChange(BUILT_IN_RULESETS[0]);
     setStatus(`Slettet «${selected.name}».`);

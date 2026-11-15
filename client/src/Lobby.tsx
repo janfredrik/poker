@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { RuleSet } from '../../shared/types';
 import { BUILT_IN_RULESETS } from '../../shared/presets';
 import { call, prefs, tokens } from './lib/socket';
@@ -12,6 +12,12 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [approval, setApproval] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [code, setCode] = useState(prefs.get('createCode'));
+
+  useEffect(() => {
+    fetch('/api/config').then((r) => r.json()).then((c: { needsCode?: boolean }) => setNeedsCode(Boolean(c.needsCode))).catch(() => {});
+  }, []);
 
   const [bots, setBots] = useState(3);
   const [demoBusy, setDemoBusy] = useState(false);
@@ -35,11 +41,13 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
     e.preventDefault();
     setError(null);
     if (!name.trim()) { setError('Skriv inn navnet ditt så vennene dine ser hvem som er vert.'); return; }
+    if (needsCode && !code.trim()) { setError('Skriv inn koden for å åpne bord.'); return; }
     setBusy(true);
     try {
       const res = await call<{ tableId: string; token: string }>('table:create', {
-        hostName: name, settings: { name: tableName, requireApproval: approval, rules },
+        hostName: name, code: code.trim(), settings: { name: tableName, requireApproval: approval, rules },
       });
+      if (needsCode) prefs.set('createCode', code.trim());
       prefs.set('name', name.trim());
       prefs.set('tableName', tableName.trim());
       tokens.set(res.tableId, res.token);
@@ -85,6 +93,14 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
           <span className="toggle__track" aria-hidden="true" />
           Jeg vil godkjenne spillere før de får et sete
         </label>
+
+        {needsCode && (
+          <label className="field field--wide">
+            <span className="field__label">Kode for å åpne bord</span>
+            <input type="password" value={code} onChange={(e) => setCode(e.target.value)} maxLength={100} autoComplete="off" />
+            <span className="field__hint">Får du fra den som drifter serveren. Vennene dine trenger den ikke, de blir med via lenken.</span>
+          </label>
+        )}
 
         {error && <p className="form-error" role="alert">{error}</p>}
 

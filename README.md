@@ -97,7 +97,8 @@ After the relay test above succeeds, remove the old `coturn` container (`docker 
 |---|---|---|
 | `PORT` | `3000` | HTTP port inside the container |
 | `DATA_DIR` | `/data` | Tables, ledgers, rule sets, TURN usage state |
-| `TABLE_TTL_DAYS` | `14` | Idle tables are deleted after this |
+| `CREATE_CODE` | none | If set, opening a table and saving/deleting rule sets require this code. Joining by link and demo tables stay open. Each IP gets 10 table attempts and 15 demo tables per hour, with at most 3 demos live at once |
+| `TABLE_TTL_DAYS` | `14` | Idle tables are deleted after this. Tables where no hand was ever dealt are deleted after 24 h with nobody connected |
 | `CF_TURN_KEY_ID` | none | Cloudflare Realtime TURN key ID. Without it and the token: STUN only |
 | `CF_TURN_API_TOKEN` | none | The TURN key's API token (server only) |
 | `TURN_TTL_HOURS` | `24` | Lifetime of the credentials browsers get; refreshed an hour before expiry |

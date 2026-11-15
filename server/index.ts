@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto';
-import { createServer } from 'node:http';
+import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createServer, type IncomingMessage } from 'node:http';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,49 @@ import { rtcConfig, startUsageWatch, usageSummary } from './turn';
 const PORT = Number(process.env.PORT ?? 3000);
 const here = dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = [join(here, 'client'), join(here, '..', 'dist', 'client')].find((d) => existsSync(join(d, 'index.html')));
+
+/* ---------------- access ---------------- */
+
+/** When set, opening a table and saving or deleting rule sets require this code. Joining a table by link stays open. */
+const CREATE_CODE = (process.env.CREATE_CODE ?? '').trim();
+const digest = (s: string) => createHash('sha256').update(s).digest();
+function codeOk(input: unknown): boolean {
+  if (!CREATE_CODE) return true;
+  return timingSafeEqual(digest(String(input ?? '').trim()), digest(CREATE_CODE));
+}
+
+/** Proxies we accept X-Forwarded-For from: loopback and private networks (nginx on the host reaches the container via the Docker bridge). */
+const TRUSTED_PROXY = 'loopback, linklocal, uniquelocal';
+const isTrustedHop = (a: string) => /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|::1$|f[cd]|fe80:)/i.test(a);
+
+/** Client IP for a raw request (sockets), mirroring Express' `trust proxy` above: walk X-Forwarded-For from the right past trusted hops. */
+function clientIp(req: IncomingMessage): string {
+  const strip = (a: string) => a.trim().replace(/^::ffff:/i, '');
+  const xff = String(req.headers['x-forwarded-for'] ?? '').split(',').map(strip).filter(Boolean);
+  const hops = [strip(req.socket.remoteAddress ?? '?'), ...xff.reverse()];
+  return hops.find((a) => !isTrustedHop(a)) ?? hops[hops.length - 1];
+}
+
+/** Fixed-window counter per key (client IP). `hit` returns false once the key is over its limit for the window. */
+function ipLimiter(windowMs: number, max: number) {
+  const hits = new Map<string, { n: number; reset: number }>();
+  return (key: string) => {
+    const now = Date.now();
+    let h = hits.get(key);
+    if (!h || now > h.reset) { h = { n: 0, reset: now + windowMs }; hits.set(key, h); }
+    if (hits.size > 5000) for (const [k, v] of hits) if (now > v.reset) hits.delete(k);
+    return ++h.n <= max;
+  };
+}
+
+const HOUR = 60 * 60 * 1000;
+/** Attempts to open a table per IP and hour; wrong codes count, which also slows down guessing. */
+const allowCreate = ipLimiter(HOUR, 10);
+const allowDemo = ipLimiter(HOUR, 15);
+const allowRtc = ipLimiter(10 * 60 * 1000, 60);   // a whole household behind one IP reloading a few times is fine
+/** Live demo tables a single IP may have at once. */
+const MAX_DEMOS_PER_IP = 3;
+const demoOwner = new Map<string, string>();
 
 /* ---------------- state ---------------- */
 
@@ -41,34 +84,34 @@ function register(t: Table) {
 
 const app = express();
 app.disable('x-powered-by');
-app.set('trust proxy', true);
+app.set('trust proxy', TRUSTED_PROXY);
 app.use(express.json({ limit: '64kb' }));
 
 app.get('/api/health', (_req, res) => { res.json({ ok: true, tables: tables.size, turn: usageSummary() }); });
 
 /** ICE servers for WebRTC: Cloudflare TURN credentials (see turn.ts), rate-limited per client IP. */
-const rtcHits = new Map<string, { n: number; reset: number }>();
-const RTC_WINDOW_MS = 10 * 60 * 1000;
-const RTC_MAX_PER_WINDOW = 60;   // a whole household behind one IP reloading a few times is fine
-
 app.get('/api/rtc-config', async (req, res) => {
-  const ip = req.ip ?? '?';
-  const now = Date.now();
-  let hit = rtcHits.get(ip);
-  if (!hit || now > hit.reset) { hit = { n: 0, reset: now + RTC_WINDOW_MS }; rtcHits.set(ip, hit); }
-  if (++hit.n > RTC_MAX_PER_WINDOW) { res.status(429).json({ error: 'For mange forespørsler.' }); return; }
-  if (rtcHits.size > 5000) for (const [k, v] of rtcHits) if (now > v.reset) rtcHits.delete(k);
+  if (!allowRtc(req.ip ?? '?')) { res.status(429).json({ error: 'For mange forespørsler.' }); return; }
   res.set('Cache-Control', 'no-store').json(await rtcConfig());
 });
+
+app.get('/api/config', (_req, res) => { res.json({ needsCode: Boolean(CREATE_CODE) }); });
+
+/** Saving and deleting rule sets need the same code as opening a table (sent as the `x-create-code` header). */
+const requireCode: express.RequestHandler = (req, res, next) => {
+  if (codeOk(req.get('x-create-code'))) { next(); return; }
+  if (!allowCreate(req.ip ?? '?')) { res.status(429).json({ error: 'For mange forsøk. Prøv igjen om en time.' }); return; }
+  res.status(403).json({ error: 'Feil kode. Spør den som drifter serveren.' });
+};
 
 app.get('/api/season-results', (_req, res) => { res.set('Cache-Control', 'no-store').json(listResults()); });
 
 app.get('/api/rulesets', (_req, res) => { res.json(listRuleSets()); });
-app.post('/api/rulesets', (req, res) => {
+app.post('/api/rulesets', requireCode, (req, res) => {
   try { res.json(saveRuleSet(req.body as Partial<RuleSet>)); }
   catch (e) { res.status(400).json({ error: String((e as Error).message) }); }
 });
-app.delete('/api/rulesets/:id', (req, res) => {
+app.delete('/api/rulesets/:id', requireCode, (req, res) => {
   if (BUILT_IN_RULESETS.some((b) => b.id === req.params.id)) { res.status(400).json({ error: 'Innebygde regelsett kan ikke slettes.' }); return; }
   deleteRuleSet(req.params.id);
   res.json({ ok: true });
@@ -177,7 +220,11 @@ io.on('connection', (raw) => {
     if (event === 'rtc:signal' ? allowSignal() : allowGamePacket()) next();
   });
 
-  s.on('table:create', (input: { settings: Partial<TableSettings>; hostName: string }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
+  const ip = clientIp(s.request);
+
+  s.on('table:create', (input: { settings: Partial<TableSettings>; hostName: string; code?: string }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
+    if (!allowCreate(ip)) throw new GameError('Du har prøvd å åpne for mange bord. Prøv igjen om en time.');
+    if (!codeOk(input?.code)) throw new GameError('Feil kode for å åpne bord. Spør den som drifter serveren.');
     if (tables.size > 500) throw new GameError('Det er for mange åpne bord på serveren.');
     const settings = sanitizeSettings(input?.settings ?? {});
     const t = new Table(settings);
@@ -190,8 +237,12 @@ io.on('connection', (raw) => {
 
   s.on('demo:create', (input: { name?: string; bots?: number }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
     if (tables.size > 500) throw new GameError('Det er for mange åpne bord på serveren.');
+    let mine = 0;
+    for (const owner of demoOwner.values()) if (owner === ip) mine++;
+    if (mine >= MAX_DEMOS_PER_IP || !allowDemo(ip)) throw new GameError('Du har mange demobord åpne. Prøv igjen om litt.');
     const { table: t, hostToken } = createDemoTable(input?.name, input?.bots);
     register(t);
+    demoOwner.set(t.id, ip);
     return { tableId: t.id, token: hostToken };
   }));
 
@@ -301,9 +352,7 @@ io.on('connection', (raw) => {
     if (!p.isHost) throw new GameError('Bare verten kan stenge bordet.');
     if (!t.demo) archiveResult(t);
     io.to(t.id).emit('table:closed');
-    t.dispose();
-    tables.delete(t.id);
-    deleteTableFile(t.id);
+    drop(t);
   }));
 
   // WebRTC signalling relay (only between sockets in the same table)
@@ -332,17 +381,28 @@ io.on('connection', (raw) => {
 
 /** Demo tables are dropped once nobody has been looking at them for this long. */
 const DEMO_EMPTY_MS = 10 * 60 * 1000;
-const demoEmptySince = new Map<string, number>();
+/** Real tables where no hand was ever dealt are dropped once nobody has been looking at them for this long
+ *  (long enough to open a table in the morning and share the link for the evening). */
+const UNUSED_EMPTY_MS = 24 * HOUR;
+const emptySince = new Map<string, number>();
+
+function drop(t: Table) {
+  t.dispose();
+  tables.delete(t.id);
+  emptySince.delete(t.id);
+  demoOwner.delete(t.id);
+  if (!t.demo) deleteTableFile(t.id);
+}
 
 setInterval(() => {
   const now = Date.now();
   for (const t of tables.values()) {
     t.tick();
-    if (!t.demo) continue;
-    if (io.sockets.adapter.rooms.get(t.id)?.size) { demoEmptySince.delete(t.id); continue; }
-    const since = demoEmptySince.get(t.id) ?? now;
-    demoEmptySince.set(t.id, since);
-    if (now - since > DEMO_EMPTY_MS) { t.dispose(); tables.delete(t.id); demoEmptySince.delete(t.id); }
+    if (!t.demo && t.handNumber > 0) continue;
+    if (io.sockets.adapter.rooms.get(t.id)?.size) { emptySince.delete(t.id); continue; }
+    const since = emptySince.get(t.id) ?? now;
+    emptySince.set(t.id, since);
+    if (now - since > (t.demo ? DEMO_EMPTY_MS : UNUSED_EMPTY_MS)) drop(t);
   }
 }, 1000);
 
