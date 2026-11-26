@@ -245,6 +245,15 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const spots = useMemo(() => spread(anchors, Math.max(shown.length, 1), dealerOn), [anchors, shown.length, dealerOn]);
   const posOf = useCallback((seat: number) => spots[shown.indexOf(seat)] ?? CENTER, [spots, shown]);
 
+  // Someone else took the seat while you were filling in the buy-in: move the sheet to the next
+  // open seat (it keeps what you typed), or close it if the table just filled up. Not while your
+  // own request is in flight, since your seat can show up before the view knows it is you.
+  const sitTakenBy = sitAt != null ? bySeat.get(sitAt)?.id ?? null : null;
+  useEffect(() => {
+    if (busy || sitTakenBy == null || sitTakenBy === view?.you.playerId) return;
+    setSitAt(openSeat);
+  }, [busy, sitTakenBy, openSeat, view?.you.playerId]);
+
   const unread = (view?.log.filter((e) => e.kind === 'chat').length ?? 0) - seenLog;
   useEffect(() => {
     if (drawer && tab === 'log' && view) setSeenLog(view.log.filter((e) => e.kind === 'chat').length);
