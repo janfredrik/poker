@@ -209,12 +209,13 @@ io.on('connection', (raw) => {
   const allowReaction = packetBudget(5);
   // Offers, answers and trickled ICE candidates arrive in bursts for every peer at the table.
   const allowSignal = packetBudget(512);
-  s.use(([event], next) => {
-    if (event === 'reaction') {
-      if (allowReaction()) next();
-      return;
-    }
-    if (event === 'rtc:signal' ? allowSignal() : allowGamePacket()) next();
+  s.use((packet, next) => {
+    const event = packet[0];
+    const ok = event === 'reaction' ? allowReaction() : event === 'rtc:signal' ? allowSignal() : allowGamePacket();
+    if (ok) { next(); return; }
+    // Answer a dropped call instead of leaving the client to time out with "Serveren svarte ikke".
+    const ack = packet[packet.length - 1];
+    if (typeof ack === 'function') (ack as Ack)({ ok: false, error: 'Rolig nå, du sender for mange klikk. Prøv igjen om et øyeblikk.' });
   });
 
   const ip = clientIp(s.request);

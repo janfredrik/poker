@@ -129,6 +129,7 @@ input, textarea { caret-color: var(--lamp); }
 .btn--quiet:disabled { color: var(--faint); }
 .btn--fold { background: transparent; color: var(--bone); border-color: var(--line-2); }
 .btn--fold:hover:not(:disabled) { background: rgba(239, 231, 214, 0.08); }
+.btn--fold.is-armed { border-color: var(--bone); background: rgba(239, 231, 214, 0.12); }
 .btn--danger { background: transparent; color: var(--bad); border-color: rgba(240, 149, 138, 0.35); }
 .btn--danger:hover { background: rgba(240, 149, 138, 0.1); }
 .btn kbd {

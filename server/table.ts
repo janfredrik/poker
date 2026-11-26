@@ -964,9 +964,7 @@ export class Table {
 
     switch (type) {
       case 'fold':
-        if (legal.canCheck && !timedOut) {
-          // folding when you can check is allowed but almost always a misclick; treat as check-fold? No: honour it.
-        }
+        // Folding when you could check is allowed; the client asks for a second click first.
         hp.folded = true;
         hp.lastAction = 'Fold';
         this.addLog('action', `${p.name} folder${suffix}`);

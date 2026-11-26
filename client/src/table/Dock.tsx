@@ -35,6 +35,22 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
     const afterCall = totalPot + legal.callAmount;
     return Math.round(hand.currentBet + afterCall * frac);
   };
+  // Folding when checking is free is almost always a misclick, so the Fold button asks for a second click.
+  const [foldArmed, setFoldArmed] = useState(false);
+  useEffect(() => {
+    setFoldArmed(false);
+  }, [legal?.canCheck, hand?.number, hand?.street]);
+  useEffect(() => {
+    if (!foldArmed) return;
+    const t = setTimeout(() => setFoldArmed(false), 3000);
+    return () => clearTimeout(t);
+  }, [foldArmed]);
+  const onFold = () => {
+    if (legal?.canCheck && !foldArmed) { setFoldArmed(true); return; }
+    setFoldArmed(false);
+    onAction('fold');
+  };
+
   const clamp = (v: number) => (legal ? Math.min(legal.maxRaiseTo, Math.max(legal.minRaiseTo, Math.round(v))) : v);
 
   // keyboard shortcuts while it's your turn
@@ -152,8 +168,9 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
               </div>
             )}
             <div className="dock__buttons">
-              <button className="btn btn--fold" disabled={busy} onClick={() => onAction('fold')}>
-                Fold <kbd>F</kbd>
+              <button className={`btn btn--fold ${foldArmed ? 'is-armed' : ''}`} disabled={busy} onClick={onFold}
+                title={legal!.canCheck ? 'Du kan checke gratis' : undefined}>
+                {foldArmed ? 'Fold likevel?' : <>Fold <kbd>F</kbd></>}
               </button>
               <button className="btn btn--act" disabled={busy} onClick={() => onAction(legal!.canCheck ? 'check' : 'call')}>
                 {legal!.canCheck ? 'Check' : legal!.callAmount >= (me?.stack ?? 0) ? `All-in ${formatChips(legal!.callAmount)}` : `Call ${formatChips(legal!.callAmount)}`}
