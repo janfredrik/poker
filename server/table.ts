@@ -125,7 +125,10 @@ const LOG_LIMIT = 200;
 const FAST = process.env.POKER_FAST === '1';
 const NEXT_HAND_DELAY = FAST ? 1 : 4500;
 const SHOWDOWN_DELAY = FAST ? 1 : 7000;
-const RUNOUT_STEP = FAST ? 1 : 1400;
+// all-in run-out pacing: time to read the shown hands, then each street, with a longer wait before the river
+const RUNOUT_FIRST = FAST ? 1 : 3000;
+const RUNOUT_STEP = FAST ? 1 : 2500;
+const RUNOUT_RIVER = FAST ? 1 : 3500;
 /** A disconnected player gets this long (counted from when they dropped) before they auto check/fold. */
 const DISCONNECTED_TURN_MS = 20000;
 /** …but never less than this once it is their turn, so the table can see what happens. */
@@ -740,7 +743,7 @@ export class Table {
     if (this.nextHandTimer) return;
     if (this.eligibleForHand().length < 2) return;
     // small delay so seat changes settle and the previous result stays readable
-    const delay = FAST || this.hand?.finished ? 0 : 800;
+    const delay = FAST || this.hand?.finished ? 0 : 1500;
     this.nextHandTimer = this.later(delay, () => { this.nextHandTimer = null; this.startHand(); });
   }
 
@@ -1032,6 +1035,7 @@ export class Table {
     const canAct = notFolded.filter((x) => !x.allIn);
     if (canAct.length <= 1) {
       // all-in: reveal and run it out
+      const first = !h.runout;
       if (!h.runout) {
         h.runout = true;
         for (const x of notFolded) x.shown = true;
@@ -1039,7 +1043,8 @@ export class Table {
       }
       h.equity = allInEquity(notFolded, h.board, h.players.filter(x => x.folded && x.shown).flatMap(x => x.hole));
       const boardLength = h.board.length;
-      this.later(RUNOUT_STEP, () => {
+      const wait = first ? RUNOUT_FIRST : boardLength === 4 ? RUNOUT_RIVER : RUNOUT_STEP;
+      this.later(wait, () => {
         if (this.hand !== h || h.finished || h.board.length !== boardLength) return;
         this.dealStreet();
         this.advance();
