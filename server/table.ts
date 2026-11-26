@@ -1167,6 +1167,7 @@ export class Table {
       if (hp.pfr) stats.pfrHands++;
       if (hp.wonShowdown) stats.showdownsWon++;
       const award = h.winners?.find((w) => w.playerId === hp.id);
+      if (award && award.amount > 0) stats.handsWon = (stats.handsWon ?? 0) + 1;
       if (award) {
         const matched = Math.max(...h.players.filter((other) => other !== hp).map((other) => other.contrib));
         const uncalled = Math.max(0, hp.contrib - matched);
@@ -1345,7 +1346,7 @@ export class Table {
           camOn: p.camOn, micOn: p.micOn, rebuys: p.rebuys, addOnTaken: p.addOnTaken,
           timeBankMs: h && h.usingBank && h.bankStartedAt != null && h.toAct != null && h.players[h.toAct].id === p.id
             ? Math.max(0, p.timeBankMs - (Date.now() - h.bankStartedAt)) : p.timeBankMs,
-          place: p.place,
+          place: p.place, handsWon: p.stats?.handsWon ?? 0,
           inHand: !!hp, hasCards: !!hp && !hp.folded, bet: hp?.bet ?? 0, folded: hp?.folded ?? false,
           allIn: hp?.allIn ?? false, lastAction: hp?.lastAction ?? null,
           shownCards: hp && hp.shown ? hp.hole : null,

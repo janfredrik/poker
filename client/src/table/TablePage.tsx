@@ -526,14 +526,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           const pos = posOf(p.seat!);
           const b = betSpot(pos);
           const d = lerp(pos, CENTER, tall ? 0.44 : 0.27);
+          const isDealer = !!hand && hand.dealerSeat === p.seat;
           return (
             <div key={p.id}>
+              {/* a dealer with chips out keeps the button beside them, so it never covers the amount */}
               {p.bet > 0 && (
                 <div className="bet" style={{ left: `${b.x}%`, top: `${b.y}%` }}>
+                  {isDealer && <span className="marker marker--dealer" title="Dealer">D</span>}
                   <ChipStack amount={p.bet} size="sm" />
                 </div>
               )}
-              {hand && hand.dealerSeat === p.seat && (
+              {isDealer && p.bet === 0 && (
                 <div className="markers" style={{ left: `${d.x + (pos.x < 45 ? 5 : pos.x > 55 ? -5 : 7)}%`, top: `${d.y}%` }}>
                   <span className="marker marker--dealer" title="Dealer">D</span>
                 </div>

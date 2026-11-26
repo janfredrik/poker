@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { MicOff, WifiOff, Crown, Volume2, Bot } from 'lucide-react';
+import { MicOff, WifiOff, Crown, Volume2, Bot, Trophy } from 'lucide-react';
 import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
@@ -107,7 +107,7 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         (player.sittingOut || !player.connected || out || pending) && 'is-idle',
       ].filter(Boolean).join(' ')}
     >
-      <button className="seat__frame" onClick={() => onOpen?.(player)} aria-label={`${player.name}, ${formatChips(player.stack)} chips`}>
+      <button className="seat__frame" onClick={() => onOpen?.(player)} aria-label={`${player.name}, ${formatChips(player.stack)} chips${player.handsWon ? `, ${player.handsWon} ${player.handsWon === 1 ? 'hånd' : 'hender'} vunnet` : ''}`}>
         {showVideo ? (
           <VideoFeed stream={stream} mirror={isYou} />
         ) : (
@@ -115,6 +115,11 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         )}
         <span className="seat__badges">
           {player.isHost && <span className="badge" title="Vert"><Crown size={12} strokeWidth={2.4} /></span>}
+          {player.handsWon > 0 && (
+            <span className="badge badge--wins" title={`${player.handsWon} ${player.handsWon === 1 ? 'hånd' : 'hender'} vunnet`}>
+              <Trophy size={11} strokeWidth={2.4} aria-hidden="true" />{player.handsWon}
+            </span>
+          )}
           {!player.connected && <span className="badge" title="Frakoblet"><WifiOff size={12} strokeWidth={2.4} /></span>}
           {player.bot && <span className="badge" title="Bot"><Bot size={12} strokeWidth={2.4} /></span>}
           {player.connected && !player.bot && !player.micOn && (player.camOn || isYou) && <span className="badge" title="Mikrofon av"><MicOff size={12} strokeWidth={2.4} /></span>}

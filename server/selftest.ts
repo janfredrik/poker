@@ -270,8 +270,9 @@ for (const boardSize of [0, 3, 4, 5]) {
     } else {
       t.act(big.id, 'fold');
     }
-    deepStrictEqual(small.stats, { hands: 1, vpipHands: 1, pfrHands: 1, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 40 });
-    deepStrictEqual(big.stats, { hands: 1, vpipHands: split ? 1 : 0, pfrHands: 0, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 0 });
+    deepStrictEqual(small.stats, { hands: 1, vpipHands: 1, pfrHands: 1, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 40, handsWon: 1 });
+    deepStrictEqual(big.stats, { hands: 1, vpipHands: split ? 1 : 0, pfrHands: 0, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 0, handsWon: split ? 1 : 0 });
+    assert(t.view(null).players.find((p) => p.id === small.id)!.handsWon === 1, 'view shows hands won');
     const restored = Table.restore(structuredClone(t.snapshot()));
     deepStrictEqual(restored.players.map((p) => p.stats), ps.map((p) => p.stats));
     restored.dispose();
@@ -369,7 +370,7 @@ for (const boardSize of [0, 3, 4, 5]) {
   ]);
   assert(season.length === 1 && season[0].games === 2 && season[0].wins === 1 && season[0].net === 600, 'season aggregates across tables by name');
   assert(season[0].rebuys === 2 && season[0].addOns === 1, 'season sums rebuys and add-ons, treating unrecorded nights as none');
-  deepStrictEqual(season[0].stats, { hands: 12, vpipHands: 5, pfrHands: 3, showdownsWon: 2, biggestPot: 800 });
+  deepStrictEqual(season[0].stats, { hands: 12, vpipHands: 5, pfrHands: 3, showdownsWon: 2, biggestPot: 800, handsWon: 0 });
   t.dispose();
 }
 

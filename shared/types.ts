@@ -116,6 +116,8 @@ export interface PublicPlayer {
   timeBankMs: number;
   /** Finishing place in a tournament, once known. */
   place: number | null;
+  /** Hands won this game. */
+  handsWon: number;
   // hand-specific
   inHand: boolean;
   hasCards: boolean;

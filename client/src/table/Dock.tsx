@@ -51,6 +51,26 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
     onAction('fold');
   };
 
+  // A choice made before your turn, acted on as soon as it comes. It only holds for the street it was
+  // made on, and Check / Call lapse once someone bets more (so you never call an amount you didn't see).
+  const [pre, setPre] = useState<{ kind: 'checkfold' | 'check' | 'call'; hand: number; street: string; bet: number } | null>(null);
+  const preValid = !!pre && !!hand && pre.hand === hand.number && pre.street === hand.street
+    && (pre.kind === 'checkfold' || pre.bet === hand.currentBet);
+  const preKind = preValid ? pre!.kind : null;
+  const toCall = hand && me ? Math.min(me.stack, Math.max(0, hand.currentBet - me.bet)) : 0;
+  const togglePre = (kind: 'checkfold' | 'check' | 'call') => {
+    if (!hand) return;
+    setPre(preKind === kind ? null : { kind, hand: hand.number, street: hand.street, bet: hand.currentBet });
+  };
+  useEffect(() => {
+    if (!legal || !pre) return;
+    setPre(null);
+    if (!preValid) return;
+    if (pre.kind === 'checkfold') onAction(legal.canCheck ? 'check' : 'fold');
+    else if (legal.canCheck) onAction('check');
+    else if (pre.kind === 'call') onAction('call');
+  }, [legal]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const clamp = (v: number) => (legal ? Math.min(legal.maxRaiseTo, Math.max(legal.minRaiseTo, Math.round(v))) : v);
 
   // keyboard shortcuts while it's your turn
@@ -74,6 +94,8 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
   const canShow = !!hand?.winners && me?.inHand && !me?.shownCards && you.holeCards.length > 0;
   const isBet = hand?.currentBet === 0;
   const allInRaise = legal && raiseTo >= legal.maxRaiseTo;
+  const bb = Math.max(1, hand?.blinds.bb ?? 1);
+  const canPre = seated && !myTurn && !!hand && !hand.winners && !!me?.inHand && !me.folded && !me.allIn;
 
   return (
     <section className={`dock ${myTurn ? 'is-turn' : ''}`} aria-label="Din hånd og dine valg">
@@ -114,12 +136,12 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         ) : me?.folded ? (
           <>
             <span className="dock__label">Fold</span>
-            <span className="dock__mid">{actingName ? `${actingName} har tur` : 'Neste hånd starter snart'}</span>
+            <span className="dock__mid">{actingName ? `${actingName} sin tur` : 'Neste hånd starter snart'}</span>
           </>
         ) : hand && !hand.winners && actingName ? (
           <>
             <span className="dock__label">{view.status === 'paused' ? 'På pause' : 'Venter'}</span>
-            <span className="dock__mid">{hand.toActId === me?.id ? 'Din tur når spillet fortsetter' : `${actingName} har tur`}</span>
+            <span className="dock__mid">{hand.toActId === me?.id ? 'Din tur når spillet fortsetter' : `${actingName} sin tur`}</span>
           </>
         ) : (
           <>
@@ -144,6 +166,8 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
                   <button className="chipbtn" onClick={() => setRaiseTo(legal!.maxRaiseTo)}>All-in</button>
                 </div>
                 <div className="raise__row">
+                  <button className="chipbtn raise__step" aria-label="Én big blind mindre" title="Én big blind mindre"
+                    disabled={raiseTo <= legal!.minRaiseTo} onClick={() => setRaiseTo(clamp(raiseTo - bb))}>−</button>
                   <input
                     type="range"
                     className="raise__slider"
@@ -154,6 +178,8 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
                     onChange={(e) => setRaiseTo(clamp(Number(e.target.value)))}
                     aria-label={isBet ? 'Beløp for bet' : 'Raise til'}
                   />
+                  <button className="chipbtn raise__step" aria-label="Én big blind mer" title="Én big blind mer"
+                    disabled={raiseTo >= legal!.maxRaiseTo} onClick={() => setRaiseTo(clamp(raiseTo + bb))}>+</button>
                   <input
                     ref={inputRef}
                     className="raise__input"
@@ -186,6 +212,25 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
           </>
         ) : seated ? (
           <div className="dock__side">
+            {canPre && (
+              <div className="preact" role="group" aria-label="Velg før det er din tur">
+                <label className={`chipbtn preact__opt ${preKind === 'checkfold' ? 'is-on' : ''}`}>
+                  <input type="checkbox" checked={preKind === 'checkfold'} onChange={() => togglePre('checkfold')} />
+                  Check/fold
+                </label>
+                {toCall === 0 ? (
+                  <label className={`chipbtn preact__opt ${preKind === 'check' ? 'is-on' : ''}`}>
+                    <input type="checkbox" checked={preKind === 'check'} onChange={() => togglePre('check')} />
+                    Check
+                  </label>
+                ) : (
+                  <label className={`chipbtn preact__opt ${preKind === 'call' ? 'is-on' : ''}`}>
+                    <input type="checkbox" checked={preKind === 'call'} onChange={() => togglePre('call')} />
+                    {toCall >= (me?.stack ?? 0) ? `Call all-in ${formatChips(toCall)}` : `Call ${formatChips(toCall)}`}
+                  </label>
+                )}
+              </div>
+            )}
             {view.settings.rules.timeBank.enabled && me && (
               <span className="dock__note">Tidsbank {Math.round(me.timeBankMs / 1000)} s</span>
             )}

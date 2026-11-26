@@ -16,10 +16,12 @@ export interface PlayerStats {
   pfrHands: number;
   showdownsWon: number;
   biggestPot: number;
+  /** Hands this player took chips from (missing in older saves). */
+  handsWon?: number;
 }
 
 export function emptyStats(): PlayerStats {
-  return { hands: 0, vpipHands: 0, pfrHands: 0, showdownsWon: 0, biggestPot: 0 };
+  return { hands: 0, vpipHands: 0, pfrHands: 0, showdownsWon: 0, biggestPot: 0, handsWon: 0 };
 }
 
 export interface SeasonNight {
@@ -61,6 +63,7 @@ export function seasonStandings(nights: SeasonNight[]) {
         row.stats.vpipHands += p.stats.vpipHands;
         row.stats.pfrHands += p.stats.pfrHands;
         row.stats.showdownsWon += p.stats.showdownsWon;
+        row.stats.handsWon = (row.stats.handsWon ?? 0) + (p.stats.handsWon ?? 0);
         row.stats.biggestPot = Math.max(row.stats.biggestPot, p.stats.biggestPot);
       }
       totals.set(key, row);
