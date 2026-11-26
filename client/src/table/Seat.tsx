@@ -74,7 +74,6 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         {canSit ? (
           <button className="seat__sit" onClick={() => onSit(seatNo)}>
             <span className="seat__sit-label">Sitt her</span>
-            <span className="seat__no">Sete {seatNo}</span>
           </button>
         ) : (
           <span className="seat__open"><span className="seat__no">Sete {seatNo}</span></span>

@@ -31,6 +31,44 @@ const TALL: Pt[] = [
 const CENTER: Pt = { x: 50, y: 48 };
 const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
 
+// Only taken seats (plus one open one) are drawn. Where the n-th of them sits, as positions on the
+// nine anchors above (x.5 = halfway along a straight edge: the side rails, or the top centre).
+// Hand-picked so every layout stays on tuned spots and is mirror-symmetric where n allows.
+const LAYOUTS: number[][] = [
+  [],
+  [0],
+  [0, 4.5],
+  [0, 3, 6],
+  [0, 2.5, 4.5, 6.5],
+  [0, 2, 4, 5, 7],
+  [0, 2, 3, 4.5, 6, 7],
+  [0, 1, 2.5, 4, 5, 6.5, 8],
+  [0, 1, 2, 3, 4.5, 6, 7, 8],
+  [0, 1, 2, 3, 4, 5, 6, 7, 8],
+];
+
+function spread(anchors: Pt[], n: number, keepTopFree: boolean): Pt[] {
+  return (LAYOUTS[n] ?? LAYOUTS[9]).map((t) => {
+    if (keepTopFree && t === 4.5) t = 4; // AI-dealer: she sits at the top centre
+    const a = Math.floor(t);
+    return lerp(anchors[a], anchors[(a + 1) % anchors.length], t - a);
+  });
+}
+
+// The empty seat offered to newcomers: the middle of the widest gap between taken seats, so the
+// dealer button order stays sensible as the table fills up.
+function pickOpenSeat(taken: number[], maxSeats: number): number | null {
+  if (taken.length >= maxSeats) return null;
+  if (!taken.length) return 1;
+  let best: number | null = null, bestGap = -1;
+  taken.forEach((s, i) => {
+    const next = i + 1 < taken.length ? taken[i + 1] : taken[0] + maxSeats;
+    const gap = next - s - 1;
+    if (gap > bestGap) { bestGap = gap; best = ((s + Math.ceil(gap / 2) - 1) % maxSeats) + 1; }
+  });
+  return best;
+}
+
 // A QR handoff link carries a one-time code in the fragment (never sent to the server as a URL).
 // Read once at load so it survives StrictMode's double effects, and drop it from the address bar.
 let pendingHandoff: string | null = new URLSearchParams(location.hash.slice(1)).get('handoff');
@@ -184,10 +222,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const mySeat = me?.status === 'seated' ? me.seat : me?.status === 'pending' ? me.requestedSeat : null;
   const anchors = tall ? TALL : WIDE;
   const maxSeats = view?.settings.maxSeats ?? 9;
-  const posOf = useCallback((seat: number) => {
-    const offset = mySeat ?? 1;
-    return anchors[((seat - offset) % maxSeats + maxSeats) % maxSeats];
-  }, [anchors, mySeat, maxSeats]);
+  const canSit = !me || me.status === 'watching';
+  const dealerOn = !!view?.settings.dealer; // AI-dealer
 
   const bySeat = useMemo(() => {
     const m = new Map<number, TableView['players'][number]>();
@@ -197,6 +233,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     }
     return m;
   }, [view?.players]);
+
+  const taken = useMemo(() => [...bySeat.keys()].sort((a, b) => a - b), [bySeat]);
+  const openSeat = pickOpenSeat(taken, maxSeats);
+  // Seats drawn at the table, clockwise from the bottom: yours (or the open one, for a newcomer) first.
+  const shown = useMemo(() => {
+    const list = canSit && openSeat != null ? [...taken, openSeat].sort((a, b) => a - b) : taken;
+    const start = Math.max(0, list.indexOf(mySeat ?? (canSit ? openSeat ?? -1 : -1)));
+    return [...list.slice(start), ...list.slice(0, start)];
+  }, [taken, openSeat, canSit, mySeat]);
+  const spots = useMemo(() => spread(anchors, Math.max(shown.length, 1), dealerOn), [anchors, shown.length, dealerOn]);
+  const posOf = useCallback((seat: number) => spots[shown.indexOf(seat)] ?? CENTER, [spots, shown]);
 
   const unread = (view?.log.filter((e) => e.kind === 'chat').length ?? 0) - seenLog;
   useEffect(() => {
@@ -234,7 +281,6 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     : hand.turnEndsAt ? Math.max(0, (hand.turnEndsAt - now) / hand.turnMs)
     : hand.frozenMs != null ? Math.max(0, hand.frozenMs / hand.turnMs) : null;
   const pausedMidHand = view.status === 'paused' && !!hand && !hand.winners;
-  const canSit = !me || me.status === 'watching';
   const seatedCount = view.players.filter((p) => p.status === 'seated').length;
   const winCards = new Set(hand?.winners?.flatMap((w) => w.cards) ?? []);
   const pots = hand?.pots ?? [];
@@ -277,7 +323,6 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
   const tourney = view.settings.rules.levelMinutes > 0;
   const host = view.players.find((p) => p.isHost) ?? null;
-  const openSeat = Array.from({ length: maxSeats }, (_, i) => i + 1).find((s) => !bySeat.has(s)) ?? null;
   const guest = canSit && !view.you.isHost;
 
   return (
@@ -380,7 +425,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                         {openSeat == null ? 'Bordet er fullt' : 'Velg et sete'}
                       </button>
                     </div>
-                    <p className="felt__hint">{openSeat == null ? 'Du kan se på mens du venter på et ledig sete.' : 'Du kan også velge et ledig sete ved bordet.'}</p>
+                    <p className="felt__hint">{openSeat == null ? 'Du kan se på mens du venter på et ledig sete.' : 'Du kan også trykke «Sitt her» ved bordet.'}</p>
                   </div>
                 ) : view.status === 'waiting' ? (
                   <>
@@ -433,8 +478,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           </div>
         </div>
 
-        {Array.from({ length: maxSeats }, (_, i) => {
-          const seatNo = i + 1;
+        {shown.map((seatNo) => {
           const p = bySeat.get(seatNo) ?? null;
           const pos = posOf(seatNo);
           const isYou = !!p && p.id === view.you.playerId;
