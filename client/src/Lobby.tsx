@@ -4,6 +4,7 @@ import { BUILT_IN_RULESETS } from '../../shared/presets';
 import { call, prefs, tokens } from './lib/socket';
 import { RulesPicker } from './ui/RulesPicker';
 import { PlayingCard } from './table/Card';
+import { ThemePicker } from './ui/ThemePicker';
 
 export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [name, setName] = useState(prefs.get('name'));
@@ -61,7 +62,10 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   return (
     <main className="lobby">
       <a className="wordmark lobby__mast" href="/">Poker</a>
-      <a className="season__nav" href="/season">Sesongoversikt</a>
+      <div className="lobby__tools">
+        <a className="season__nav" href="/season">Sesongoversikt</a>
+        <ThemePicker />
+      </div>
       <div className="lobby__stage">
         <div className="lobby__lamp" aria-hidden="true" />
         <header className="lobby__head">

@@ -13,13 +13,13 @@
   position: relative; display: block; width: 100%; aspect-ratio: 4 / 3; padding: 0;
   border-radius: 14px 14px 4px 4px; overflow: hidden;
   background: radial-gradient(90% 90% at 50% 30%, var(--walnut-600), var(--walnut-800));
-  border: 2px solid rgba(239, 231, 214, 0.1);
+  border: 2px solid rgb(var(--fg-rgb) / 0.1);
   cursor: pointer;
   transition: border-color 300ms;
 }
 .dealer:hover { border-color: var(--line-2); }
 .dealer:focus-visible { outline: 2px solid var(--bone-2); outline-offset: 2px; }
-.dealer.is-speaking { border-color: rgba(239, 231, 214, 0.32); }
+.dealer.is-speaking { border-color: rgb(var(--fg-rgb) / 0.32); }
 .dealer__art { display: block; width: 100%; height: 100%; }
 .dealer__eyes { transform-box: fill-box; transform-origin: center; animation: dealer-blink 5.2s infinite; }
 @keyframes dealer-blink { 0%, 95%, 100% { transform: none; } 97% { transform: scaleY(0.1); } }
@@ -56,7 +56,7 @@
 .dealer__to { display: block; font-size: 11.5px; font-weight: 700; color: var(--walnut-500); margin-bottom: 2px; }
 .dealer-anchor.is-tall .dealer__bubble { font-size: 13px; padding: 8px 11px; }
 
-.dealer-talk.is-recording { background: rgba(239, 231, 214, 0.2); color: var(--bone); border-color: var(--line-2); }
+.dealer-talk.is-recording { background: rgb(var(--fg-rgb) / 0.2); color: var(--bone); border-color: var(--line-2); }
 .dealer-talk { justify-self: start; max-width: 100%; display: inline-flex; align-items: center; gap: 6px; touch-action: none; user-select: none; -webkit-user-select: none; }
 .dealer-talk__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); animation: dealer-pulse 1s infinite; }
 @keyframes dealer-pulse { 50% { opacity: 0.3; } }

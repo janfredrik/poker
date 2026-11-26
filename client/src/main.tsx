@@ -5,6 +5,9 @@ import './styles.css';
 import { Season } from './Season';
 import { Lobby } from './Lobby';
 import { TablePage } from './table/TablePage';
+import { applyTheme, loadTheme } from './lib/theme';
+
+applyTheme(loadTheme());
 
 function App() {
   const [path, setPath] = useState(location.pathname);

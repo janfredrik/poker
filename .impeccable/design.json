@@ -435,7 +435,7 @@
   ],
   "narrative": {
     "northStar": "The Kitchen Table at 22:00",
-    "overview": "The game is played at a friend's fold-out table, not in a casino. The room is a dark walnut ground (a flat vertical gradient from walnut to deeper walnut, closed by a radial vignette), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.\n\nOne lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or teal, quiet and legible at night.\n\nHierarchy is carried by scale, weight and position, never by colour or ornament. The pot and the amount to call are the largest things on screen; stacks, blinds and timers are set in a single workhorse sans with tabular numerals so numbers never jitter. Time is shown as exact-length bars, not rings or spinners.",
+    "overview": "The game is played at a friend's fold-out table. The room is a dark walnut ground (a flat vertical gradient from walnut to deeper walnut, closed by a radial vignette), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.\n\nOne lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or teal, quiet and legible at night.\n\nHierarchy is carried by scale, weight and position, never by colour or ornament. The pot and the amount to call are the largest things on screen; stacks, blinds and timers are set in a single workhorse sans with tabular numerals so numbers never jitter. Time is shown as exact-length bars, not rings or spinners.",
     "keyCharacteristics": [
       "Walnut room, teal felt topper, clay chips, bone paper cards: four materials, nothing else.",
       "One amber lamp, reserved for action, the acting seat, focus and the turn timer.",
@@ -487,7 +487,6 @@
       "Do build textures from inline SVG and CSS gradients; self-host the font."
     ],
     "donts": [
-      "Don't draw a green casino oval or grey seat boxes.",
       "Don't put amber on decoration, headings, labels, tabs, idle states or chip denominations.",
       "Don't add wood-grain texture to the walnut; the room is a flat gradient with a vignette.",
       "Don't use chip colours for UI states or categories.",

@@ -12,9 +12,9 @@ Constraints: up to 9 seats, English poker terms, standard web controls, phones m
 
 ## Direction contract
 
-THESIS: A friend's kitchen table at 22:00, not a casino. Faces sit around a fold-out felt and one lamp lights whoever has to act. Refuses the green casino oval with grey seat boxes.
+THESIS: A friend's kitchen table at 22:00. Faces sit around a fold-out felt and one lamp lights whoever has to act.
 
-OWN-WORLD: Walnut-brown ground (#3b2a20 family), teal felt topper as a rounded square, clay-chip denominations (bone, red, blue, green, black) as stack colours, lamp amber (#f2b350) as the only saturated control colour, reserved for what you can do now. Pencil-on-paper ledger drawer. Workhorse sans plus tabular numerals.
+OWN-WORLD: Walnut-brown ground (#3b2a20 family), green felt topper as a rounded square, clay-chip denominations (bone, red, blue, green, black) as stack colours, lamp amber (#f2b350) as the only saturated control colour, reserved for what you can do now. Pencil-on-paper ledger drawer. Workhorse sans plus tabular numerals.
 
 STORY: Players see who is at the table (faces), what is in the pot, what it costs them, and whose turn it is; they act in one click; the host sees clock and ledger without leaving the table.
 

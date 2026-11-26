@@ -2,6 +2,7 @@ import { Camera, CameraOff, Eye, Link2, Mic, MicOff, Pause, Play, PanelRight, Sm
 import type { TableView } from '../../../shared/types';
 import { formatChips, formatClock } from '../../../shared/presets';
 import { useNow } from '../lib/media';
+import { ThemePicker } from '../ui/ThemePicker';
 
 interface Props {
   view: TableView;
@@ -85,6 +86,7 @@ export function TopBar(p: Props) {
           <Link2 size={15} /> {p.copied ? 'Lenken er kopiert' : 'Inviter'}
         </button>
         <span className="topbar__sep" aria-hidden="true" />
+        <ThemePicker />
         {p.onPhone && (
           <button className="iconbtn" onClick={p.onPhone} title="Fortsett på mobilen">
             <Smartphone size={18} />

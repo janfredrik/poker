@@ -1,6 +1,6 @@
 ---
 name: Poker
-description: A friend's kitchen table at 22:00 — walnut room, teal fold-out felt, clay chips, one lamp on whoever must act.
+description: A friend's kitchen table at 22:00 — walnut room, green fold-out felt, clay chips, one lamp on whoever must act.
 colors:
   walnut-950: "#160f0b"
   walnut-900: "#1d1510"
@@ -9,13 +9,13 @@ colors:
   walnut-600: "#4d3829"
   walnut-500: "#6a4f3b"
   rail: "#24160e"
-  felt-800: "#133238"
-  felt-700: "#1a424a"
-  felt-600: "#20505a"
-  felt-500: "#2a6370"
-  felt-line: "rgba(220, 240, 236, 0.16)"
-  felt-text: "#cfe0dc"
-  felt-hint: "#a9c4bf"
+  felt-800: "#0f3322"
+  felt-700: "#15432b"
+  felt-600: "#1b5434"
+  felt-500: "#246a43"
+  felt-line: "rgba(222, 242, 228, 0.16)"
+  felt-text: "#d0e3d5"
+  felt-hint: "#a7c6b0"
   bone: "#efe7d6"
   bone-2: "#d9ceb8"
   muted: "#b9a78f"
@@ -163,14 +163,14 @@ components:
 
 **Creative North Star: "The Kitchen Table at 22:00"**
 
-The game is played at a friend's fold-out table, not in a casino. The room is a dark walnut ground (a vertical gradient with a barely visible horizontal wood grain, a broad warm light pool and darker vignetted edges), the playing surface is a teal felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.
+The game is played at a friend's fold-out table. The room is a dark walnut ground (a vertical gradient with a barely visible horizontal wood grain, a broad warm light pool and darker vignetted edges), the playing surface is a green felt topper shaped as a heavily rounded square with a dashed stitch seam and a fine noise nap, and the money is clay chips seen from above. Faces sit around the felt in seats sized from the room itself, so video dominates the frame rather than hiding in thumbnails.
 
-One lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or teal, quiet and legible at night.
+One lamp lights the table. A soft warm pool of light slides to whoever must act while every other occupied seat dims; the same amber is the only saturated colour on any control, and it means exactly one thing: *you can do this now*. Everything else is bone on walnut or green felt, quiet and legible at night.
 
 Hierarchy is carried by scale, weight and position, never by colour or ornament. The pot and the amount to call are the largest things on screen; stacks, blinds and timers are set in a single workhorse sans with tabular numerals so numbers never jitter. Time is shown as exact-length bars, not rings or spinners.
 
 **Key Characteristics:**
-- Walnut room, teal felt topper, clay chips, bone paper cards: four materials, nothing else.
+- Walnut room, green felt topper, clay chips, bone paper cards: four materials, nothing else.
 - One amber lamp, reserved for action, the acting seat, focus and the turn timer.
 - Scale-only hierarchy: pot and amount-to-call are huge, labels are small and muted.
 - One sans family (Figtree Variable, self-hosted), tabular numerals everywhere.
@@ -179,13 +179,13 @@ Hierarchy is carried by scale, weight and position, never by colour or ornament.
 
 ## Colors
 
-A dark warm-wood night palette with a cool teal playing surface, bone paper for text and cards, five clay-chip hues kept strictly to chips, and one lamp amber held back for action.
+A dark warm-wood night palette with a deep green playing surface, bone paper for text and cards, five clay-chip hues kept strictly to chips, and one lamp amber held back for action.
 
 ### Primary
 - **Lamp Amber** (`lamp`): the single saturated control colour. Fills primary action buttons (Check/Call, Raise, Sit down, Start, Open the table), borders the acting seat, fills the turn-timer bar, the raise-slider thumb, toggle-on track, text caret, selection and the 2px focus outline. Hover lifts to **Lamp Bright** (`lamp-hi`); text on amber is **Lamp Ink** (`lamp-ink`). **Lamp Glow** (`lamp-glow`) is the diffuse under-shadow of amber elements and the acting seat.
 
 ### Secondary
-- **Teal Felt** (`felt-600`, resting; `felt-700` when a turn is live, also card backs and the buy-in sheet; the lobby form is `felt-600`): the playing surface. `felt-800` and `felt-500` bound the family. **Felt Thread** (`felt-line`) draws the stitched seam, empty board slots and borders of controls set on felt. **Felt Text** (`felt-text`) and **Felt Hint** (`felt-hint`) replace bone and muted when type sits on teal.
+- **Green Felt** (`felt-600`, resting; `felt-700` when a turn is live, also card backs and the buy-in sheet; the lobby form is `felt-600`): the playing surface. `felt-800` and `felt-500` bound the family. **Felt Thread** (`felt-line`) draws the stitched seam, empty board slots and borders of controls set on felt. **Felt Text** (`felt-text`) and **Felt Hint** (`felt-hint`) replace bone and muted when type sits on the cloth.
 
 ### Tertiary
 - **Clay Chips** (`chip-bone`, `chip-red`, `chip-blue`, `chip-green`, `chip-black`): stack and bet colours only, one colour per denomination. Low set (small blind not a multiple of 25): bone 1, red 5, green 25, black 100, blue 500. High set: bone 25, red 100, green 500, black 1000, blue 5000. Bone chips are spotted blue; all others are spotted bone. The wordmark's small red-and-bone chip mark is the only other use.
@@ -196,6 +196,12 @@ A dark warm-wood night palette with a cool teal playing surface, bone paper for 
 - **Bone** (`bone`): primary text, card faces, dealer button, toast, winner tag. **Bone 2** (`bone-2`): secondary text, blind-clock bar, card-back inset frame. **Muted** (`muted`): labels and hints. **Faint** (`faint`): disabled text, folded tags, timestamps. **Ink** (`ink`): text on bone.
 - **Lines** (`line`, `line-2`): hairline borders and dividers on walnut; `line-2` for inputs and fold buttons.
 - **Good / Bad** (`good`, `bad`): ledger up/down figures, success notes and destructive buttons only.
+
+### Themes (per person)
+Each player picks a room from the palette button in the top bar (and the lobby). The choice is stored in that browser only (`homegame:room`) and set as `data-room` on `<html>` by `client/src/lib/theme.ts`; the tokens live in the Themes block of `styles.css`.
+- **Rooms:** Valnøtt (default, the walnut night described above), Skifer (cool grey-blue night, same bone text), Lys eik (daylight: linen bars and drawer, oak floor, ink text, `lamp-line` deepened to `#a8680a` so focus rings and amber borders hold contrast on light ground). In Lys eik, camera tiles, the felt and everything lying on it, the lobby form and the buy-in sheet keep the dark walnut tokens, because faces on video and type on cloth need them.
+- **The felt is always green** and is not a choice: the group asked for a green table, and one shared cloth keeps the table recognisable on everyone's screen.
+- The felt, amber, chip hues and card paper (`paper`, `paper-2`) are identical in every theme. Room-tinted overlays use `rgb(var(--fg-rgb) / α)` and sunken fields `rgb(var(--sink-rgb) / α)`, never literal colours, so new UI themes itself.
 
 ### Named Rules
 **The One Lamp Rule.** Amber appears only on something you can do now (enabled action buttons, the sit-down hover, toggles, slider thumb), on the seat that must act, on its turn timer, and on keyboard focus. Never on decoration, labels, headings or idle state. Lamp *light* (the low-alpha warm radial pool in the room, the lobby lamp that switches on over the dealt hand) is atmosphere, not paint, and never forms a solid shape.
@@ -258,7 +264,7 @@ Gently rounded controls (10px; 8px for inputs and small buttons; 6px tags), pill
 Tactile and plain: a 1px press on `:active`, colour transitions at 160ms.
 - **Shape:** 10px radius (8px on small), min-height 44px (34px small, 52px large and in the dock).
 - **Act:** lamp fill, lamp-ink text, faint lamp-glow under-shadow; hover to lamp-hi. Disabled becomes a translucent bone wash with faint text and loses its glow. Keyboard hints sit inside as small outlined `kbd`.
-- **Quiet:** translucent bone wash on walnut with a hairline; on felt the wash turns teal-dark with a felt-thread border.
+- **Quiet:** translucent bone wash on walnut with a hairline; on felt the wash turns felt-dark with a felt-thread border.
 - **Fold:** transparent with `line-2` border. Fold is never amber.
 - **Danger:** transparent, `bad` text and a translucent `bad` border.
 - **Icon button:** 40px square (36px on phones), muted icon, brightens on hover; `is-on` uses a stronger bone wash, not amber. Icons are inline SVG line icons.
@@ -276,7 +282,7 @@ Tactile and plain: a 1px press on `:active`, colour transitions at 160ms.
 ### Inputs / Fields
 - **Style:** 40px high, 8px radius, `line-2` border, dark translucent fill; label above at 13px/600 bone-2, hint below in muted; optional suffix inside right.
 - **Focus:** border turns lamp and the fill darkens; no glow ring.
-- **On felt:** fill becomes teal-dark and the border felt-thread; hints switch to felt-hint.
+- **On felt:** fill becomes felt-dark and the border felt-thread; hints switch to felt-hint.
 - **Toggle:** 36x21 track, bone wash off, lamp on with a lamp-ink knob.
 - **Raise slider:** 6px track, 22px lamp thumb with a walnut ring.
 
@@ -314,7 +320,6 @@ On load the lamp switches on over the lobby stage with a short flicker (1.4s: on
 - **Do** build textures from inline SVG and CSS gradients; self-host the font.
 
 ### Don't:
-- **Don't** draw a green casino oval or grey seat boxes.
 - **Don't** put amber on decoration, headings, labels, tabs, idle states or chip denominations.
 - **Don't** let the walnut grain become a high-contrast pattern; it should be barely visible, static and built from inline SVG.
 - **Don't** use chip colours for UI states or categories.
