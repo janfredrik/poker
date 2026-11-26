@@ -1,5 +1,7 @@
 # ---- build ----
-FROM node:22-alpine AS build
+# Runs natively on the CI runner; the output (dist + pure-JS node_modules) is
+# platform-independent, so arm64 doesn't need npm/vite under QEMU emulation.
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
