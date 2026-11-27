@@ -77,8 +77,19 @@ export function DealerTalkButton({ view }: { view: TableView }) {
   const rec = useRef<Recording | null>(null);
   const starting = useRef<Promise<void> | null>(null);
   const limit = useRef<ReturnType<typeof setTimeout>>();
+  const active = useRef(false);
   const me = view.players.find((p) => p.id === view.you.playerId);
   const show = info.canListen && !!view.settings.dealer && me?.status === 'seated';
+
+  useEffect(() => {
+    active.current = true;
+    return () => {
+      active.current = false;
+      clearTimeout(limit.current);
+      void rec.current?.stop();
+      rec.current = null;
+    };
+  }, []);
 
   useEffect(() => { if (!note) return; const t = setTimeout(() => setNote(null), 3500); return () => clearTimeout(t); }, [note]);
 
@@ -92,7 +103,9 @@ export function DealerTalkButton({ view }: { view: TableView }) {
     if (!wav) { setState('idle'); setNote('Hold knappen inne mens du snakker.'); return; }
     setState('sending');
     try {
-      const res = await call<{ heard: string }>('dealer:ask', await wav.arrayBuffer());
+      const audio = await wav.arrayBuffer();
+      if (!active.current) return;
+      const res = await call<{ heard: string }>('dealer:ask', audio);
       setNote(`«${res.heard}»`);
     } catch (e) {
       setNote((e as Error).message);
@@ -106,7 +119,11 @@ export function DealerTalkButton({ view }: { view: TableView }) {
     setState('recording');
     setNote(null);
     starting.current = startRecording()
-      .then((r) => { rec.current = r; limit.current = setTimeout(() => void finish(), MAX_MS); })
+      .then((r) => {
+        if (!active.current) { void r.stop(); return; }
+        rec.current = r;
+        limit.current = setTimeout(() => void finish(), MAX_MS);
+      })
       .catch((e: Error) => {
         setState('idle');
         setNote(e.name === 'NotAllowedError' ? 'Nettleseren har blokkert mikrofonen.' : e.message || 'Fant ingen mikrofon.');

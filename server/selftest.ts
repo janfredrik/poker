@@ -51,19 +51,27 @@ async function allInShowdown(stacks: number[], holeCards: string[][], dealerSeat
     }
     while (h.toAct != null) t.act(h.players[h.toAct].id, 'allin');
     deepStrictEqual(h.finished, true, 'all-in hand reached showdown');
-    return players.map(p => p.stack);
+    return {
+      stacks: players.map(p => p.stack),
+      wins: players.map(p => p.stats?.handsWon),
+      awards: h.winners!.map(w => [t.player(w.playerId)!.name, w.amount]),
+    };
   } finally {
     t.dispose();
   }
 }
 
 // A's aces win the 300 main pot. B's kings beat C's queens for the 400 side pot.
-deepStrictEqual(await allInShowdown([100, 300, 300], [['As', 'Ad'], ['Ks', 'Kd'], ['Qs', 'Qd']], 1),
+deepStrictEqual((await allInShowdown([100, 300, 300], [['As', 'Ad'], ['Ks', 'Kd'], ['Qs', 'Qd']], 1)).stacks,
   [300, 400, 0], 'main and side pots go to their respective winners');
 
 // Dealer C ties A across the button. A receives the odd chip from the 303 pot.
-deepStrictEqual(await allInShowdown([101, 101, 101], [['As', 'Ad'], ['Qs', 'Qd'], ['Ah', 'Ac']], 3),
+deepStrictEqual((await allInShowdown([101, 101, 101], [['As', 'Ad'], ['Qs', 'Qd'], ['Ah', 'Ac']], 3)).stacks,
   [152, 0, 151], 'first tied winner left of the dealer receives the odd chip');
+
+// B wins the only pot. The 600 A gets back was never called.
+deepStrictEqual(await allInShowdown([1000, 400], [['Qs', 'Qd'], ['As', 'Ad']], 2),
+  { stacks: [600, 800], wins: [0, 1], awards: [['B', 800]] });
 
 // Check the fast runout scoring against the showdown evaluator, including board ties.
 {
@@ -116,7 +124,19 @@ deepStrictEqual(await allInShowdown([101, 101, 101], [['As', 'Ad'], ['Qs', 'Qd']
     for (const p of live) assert(t.view(p.id).players.find(x => x.id === p.id)?.equity === p.equity, 'viewers share the same calculation');
   };
   check();
+  for (const boardSize of [0, 3, 4, 5]) {
+    t.onChange = () => {
+      check();
+      if (t.status === 'running' && h.board.length === boardSize && !h.finished) t.pause(ps[0].id);
+    };
+    if (boardSize === 0) t.pause(ps[0].id);
+    else t.start(ps[0].id);
+    for (let i = 0; i < 100 && t.status !== 'paused'; i++) await sleep(2);
+    await sleep(10);
+    deepStrictEqual([t.status, h.board.length, h.finished], ['paused', boardSize, false]);
+  }
   t.onChange = check;
+  t.start(ps[0].id);
   while (!h.finished) await sleep(1);
   // 5: the river lies face down for a moment, still with the odds from before it
   assert([...boards].join(',') === '0,3,4,5', 'odds published before each remaining street');
@@ -270,6 +290,7 @@ for (const boardSize of [0, 3, 4, 5]) {
       while (!h.finished) t.act(h.players[h.toAct!].id, 'check');
     } else {
       t.act(big.id, 'fold');
+      deepStrictEqual(h.winners?.map(w => w.amount), [40], 'uncalled part of a raise is returned after a fold');
     }
     deepStrictEqual(small.stats, { hands: 1, vpipHands: 1, pfrHands: 1, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 40, handsWon: 1, flopsSeen: split ? 1 : 0, showdowns: split ? 1 : 0, showdownsWonTracked: split ? 1 : 0, postflopAggr: 0, postflopCalls: 0 });
     deepStrictEqual(big.stats, { hands: 1, vpipHands: split ? 1 : 0, pfrHands: 0, showdownsWon: split ? 1 : 0, biggestPot: split ? 100 : 0, handsWon: split ? 1 : 0, flopsSeen: split ? 1 : 0, showdowns: split ? 1 : 0, showdownsWonTracked: split ? 1 : 0, postflopAggr: 0, postflopCalls: 0 });
@@ -661,6 +682,22 @@ for (const boardSize of [0, 3, 4, 5]) {
   dealer.dealerForget(t.id);
   setKeys(false);
   globalThis.fetch = realFetch;
+}
+
+// Someone leaving mid-hand keeps the turn order, and the winner gets no knockout for them.
+{
+  const t = new Table({ name: 'Leave', maxSeats: 9, requireApproval: false, rules: rs('cash-10-20') });
+  const ps = ['A', 'B', 'C', 'D'].map((n, i) => { const p = t.createPlayer(n, i === 0); p.connections = 1; t.requestSeat(p, i + 1, n, 1000); return p; });
+  t.start(ps[0].id);
+  for (let i = 0; i < 200 && !t.hand; i++) await sleep(2);
+  const h = t.hand!;
+  const actor = h.players[h.toAct!].id;
+  const leaver = ps.find((p) => p.id !== actor && h.players.find((x) => x.id === p.id))!;
+  t.leaveSeat(leaver);
+  deepStrictEqual(h.players[h.toAct!].id, actor, 'leaving the seat does not skip the player to act');
+  while (!h.finished) { const id = h.players[h.toAct!].id; t.act(id, 'fold'); }
+  assert(ps.every((p) => !(p.knockouts ?? []).includes(leaver.id)), 'leaving the seat is not a knockout');
+  t.dispose();
 }
 
 let totalHands = 0;

@@ -174,6 +174,7 @@ export class Table {
 
   private timers = new Set<NodeJS.Timeout>();
   private turnTimer: NodeJS.Timeout | null = null;
+  private runoutTimer: { timer: NodeJS.Timeout; due: number } | null = null;
   private nextHandTimer: NodeJS.Timeout | null = null;
   onChange: () => void = () => {};
 
@@ -598,7 +599,8 @@ export class Table {
       this.announceLevelStart();
       this.shuffleSeats();
     } else if (this.hand && !this.hand.finished) {
-      this.thawTurn(this.hand);
+      if (this.hand.runout) this.scheduleRunout(this.hand, this.hand.frozenMs ?? 0);
+      else this.thawTurn(this.hand);
     } else {
       this.maybeStartHand();
     }
@@ -647,6 +649,12 @@ export class Table {
     const h = this.hand;
     const midHand = !!h && !h.finished;
     if (h && midHand) this.freezeTurn(h);
+    if (h && this.runoutTimer) {
+      h.frozenMs = Math.max(0, this.runoutTimer.due - Date.now());
+      clearTimeout(this.runoutTimer.timer);
+      this.timers.delete(this.runoutTimer.timer);
+      this.runoutTimer = null;
+    }
     this.addLog('system', midHand ? 'Verten har satt spillet på pause. Hånden fortsetter når verten starter igjen.' : 'Verten har satt spillet på pause.');
     this.touch();
   }
@@ -1026,9 +1034,11 @@ export class Table {
     if (h.finished) return;
     const notFolded = h.players.filter((x) => !x.folded);
     if (notFolded.length === 1) { this.winUncontested(notFolded[0]); return; }
+    if (h.runout && this.status === 'paused') return;
 
+    // Start at the player to act: someone else folding (leaving the seat) must not skip their turn.
     const from = h.toAct ?? 0;
-    const next = this.nextNeeding(from);
+    const next = this.nextNeeding(from - 1);
     if (next != null) {
       h.toAct = next;
       this.startTurn();
@@ -1037,6 +1047,7 @@ export class Table {
     // street complete
     h.toAct = null;
     this.startTurn();
+    this.returnUncalled(h);
     this.collectBets();
     if (h.street === 'river') { this.showdown(); return; }
 
@@ -1050,23 +1061,7 @@ export class Table {
         this.addLog('hand', 'All-in. Kortene vises.');
       }
       h.equity = allInEquity(notFolded, h.board, h.players.filter(x => x.folded && x.shown).flatMap(x => x.hole));
-      const boardLength = h.board.length;
-      const wait = first ? RUNOUT_FIRST : boardLength === 4 ? RUNOUT_RIVER : RUNOUT_STEP;
-      this.later(wait, () => {
-        if (this.hand !== h || h.finished || h.board.length !== boardLength) return;
-        this.dealStreet();
-        if (h.board.length === 5) {
-          this.touch();
-          this.later(RUNOUT_SQUEEZE, () => {
-            if (this.hand !== h || h.finished) return;
-            this.advance();
-            this.touch();
-          });
-          return;
-        }
-        this.advance();
-        this.touch();
-      });
+      this.scheduleRunout(h, first ? RUNOUT_FIRST : h.board.length === 4 ? RUNOUT_RIVER : RUNOUT_STEP);
       return;
     }
     this.dealStreet();
@@ -1080,6 +1075,36 @@ export class Table {
     let idx = h.players.length - 1;
     for (let i = 0; i < h.players.length; i++) if (h.players[i].seat < seat) idx = i;
     return idx;
+  }
+
+  private scheduleRunout(h: Hand, delay: number) {
+    if (this.runoutTimer) return;
+    if (this.status === 'paused') { h.frozenMs = delay; return; }
+    h.frozenMs = null;
+    const timer = this.later(delay, () => {
+      this.runoutTimer = null;
+      if (this.hand !== h || h.finished) return;
+      if (h.board.length < 5) {
+        this.dealStreet();
+        if (h.board.length === 5) {
+          this.scheduleRunout(h, RUNOUT_SQUEEZE);
+          this.touch();
+          return;
+        }
+      }
+      this.advance();
+      this.touch();
+    });
+    this.runoutTimer = { timer, due: Date.now() + delay };
+  }
+
+  private returnUncalled(h: Hand) {
+    const [highest, runnerUp] = [...h.players].sort((a, b) => b.contrib - a.contrib);
+    const refund = highest.contrib - runnerUp.contrib;
+    if (refund === 0 || highest.folded) return;
+    highest.contrib -= refund;
+    this.player(highest.id)!.stack += refund;
+    this.addLog('hand', `${this.name(highest.id)} får ${fc(refund)} tilbake fra innsatsen som ingen synet.`);
   }
 
   private collectBets() {
@@ -1121,6 +1146,7 @@ export class Table {
 
   private winUncontested(winner: HandPlayer) {
     const h = this.hand!;
+    this.returnUncalled(h);
     const total = h.players.reduce((s, x) => s + x.contrib, 0);
     const p = this.player(winner.id);
     if (p) p.stack += total;
@@ -1178,6 +1204,11 @@ export class Table {
   private finishHand(delay: number) {
     const h = this.hand!;
     h.finished = true;
+    if (this.runoutTimer) {
+      clearTimeout(this.runoutTimer.timer);
+      this.timers.delete(this.runoutTimer.timer);
+      this.runoutTimer = null;
+    }
     delete h.equity;
     h.toAct = null;
     h.turnEndsAt = null;
@@ -1199,22 +1230,17 @@ export class Table {
       if (hp.wonShowdown) stats.showdownsWon++;
       const award = h.winners?.find((w) => w.playerId === hp.id);
       if (award && award.amount > 0) stats.handsWon = (stats.handsWon ?? 0) + 1;
-      if (award) {
-        const matched = Math.max(...h.players.filter((other) => other !== hp).map((other) => other.contrib));
-        const uncalled = Math.max(0, hp.contrib - matched);
-        stats.biggestPot = Math.max(stats.biggestPot, award.amount - uncalled);
-      }
+      if (award) stats.biggestPot = Math.max(stats.biggestPot, award.amount);
     }
     // bust-outs sit out until they rebuy
     for (const hp of h.players) {
       const p = this.player(hp.id);
-      if (p && p.stack === 0) {
+      // Someone who left the seat mid-hand also has 0 chips, but nobody knocked them out.
+      if (p && p.status === 'seated' && p.stack === 0) {
         // Credit the winners of the last pot the busted player could win; a split pot credits each winner.
         const pot = [...h.potWinners ?? []].reverse().find((x) => x.eligible.includes(hp.id));
         const knockers = (pot?.winners ?? h.winners?.map((w) => w.playerId) ?? []).filter((id) => id !== hp.id);
         for (const id of knockers) { const k = this.player(id); if (k) (k.knockouts ??= []).push(hp.id); }
-      }
-      if (p && p.status === 'seated' && p.stack === 0) {
         const offer = this.rebuyOffer(p);
         this.addLog('system', offer?.allowed ? `${p.name} er tom for chips og kan gjøre rebuy.` : `${p.name} er tom for chips.`);
       }

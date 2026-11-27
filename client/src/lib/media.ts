@@ -44,6 +44,7 @@ class MediaMesh {
   /** Signals from peers whose connection we have not opened yet. */
   private pending = new Map<string, SignalData[]>();
   private local: MediaStream | null = null;
+  private captureSession = 0;
   private listeners = new Set<() => void>();
   private snap: Snapshot = { local: null, camOn: false, micOn: false, streams: {}, speaking: {}, error: null, busy: false, spectators: 0 };
   private audioCtx: AudioContext | null = null;
@@ -219,11 +220,15 @@ class MediaMesh {
     }
   }
 
-  private async acquire(kind: Kind) {
+  private async acquire(kind: Kind, session: number) {
     const constraints: MediaStreamConstraints = kind === 'video'
       ? { video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 }, facingMode: 'user' } }
       : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } };
     const s = await navigator.mediaDevices.getUserMedia(constraints);
+    if (session !== this.captureSession) {
+      for (const track of s.getTracks()) track.stop();
+      return;
+    }
     const track = kind === 'video' ? s.getVideoTracks()[0] : s.getAudioTracks()[0];
     if (!this.local) this.local = new MediaStream();
     for (const old of this.local.getTracks()) if (old.kind === kind) { old.stop(); this.local.removeTrack(old); }
@@ -244,6 +249,11 @@ class MediaMesh {
   }
 
   async setCam(on: boolean) { await this.toggle('video', on); }
+  async enableCameraAndMic() {
+    const session = this.captureSession;
+    await this.setCam(true);
+    if (session === this.captureSession) await this.setMic(true);
+  }
   async setMic(on: boolean) {
     // Keep the mic track alive once granted; muting just disables it (no re-prompt, instant).
     const t = this.local?.getAudioTracks()[0];
@@ -252,16 +262,19 @@ class MediaMesh {
   }
 
   private async toggle(kind: Kind, on: boolean) {
+    const session = this.captureSession;
     if (!navigator.mediaDevices?.getUserMedia) {
       this.emit({ error: 'Kamera og mikrofon krever en sikker tilkobling (HTTPS).' });
       return;
     }
     this.emit({ busy: true, error: null });
     try {
-      if (on) await this.acquire(kind);
+      if (on) await this.acquire(kind, session);
       else this.release(kind);
+      if (session !== this.captureSession) return;
       this.emit({ busy: false });
     } catch (e) {
+      if (session !== this.captureSession) return;
       const name = (e as DOMException)?.name;
       const msg = name === 'NotAllowedError'
         ? `Nettleseren har blokkert ${kind === 'video' ? 'kameraet' : 'mikrofonen'}. Gi tilgang i adressefeltet og prøv igjen.`
@@ -281,10 +294,12 @@ class MediaMesh {
 
   /** Turn camera and mic fully off and wait until the server knows. */
   async stopAll() {
+    this.captureSession++;
+    const hadTracks = !!this.local;
     this.release('video');
     this.release('audio');
-    this.emit();
-    await call('player:media', { camOn: false, micOn: false }).catch(() => {});
+    this.emit({ busy: false, error: null });
+    if (hadTracks && socket.connected) await call('player:media', { camOn: false, micOn: false }).catch(() => {});
   }
 
   /** Called when we learn (or lose) our player identity at this table. */

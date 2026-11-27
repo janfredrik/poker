@@ -1160,6 +1160,7 @@ body:has(.lobby) { overflow: auto; }
 .squeeze__turn { position: relative; display: block; transform-style: preserve-3d; animation: squeeze 1400ms both; }
 .squeeze__turn > .card { display: block; backface-visibility: hidden; }
 .squeeze__turn > .card--face { animation: none; }
+.board[data-paused="true"] :is(.card, .squeeze, .squeeze__turn) { animation-play-state: paused; }
 .squeeze__back { position: absolute; inset: 0; transform: rotateY(180deg); animation: none; }
 @keyframes squeeze {
   0%, 70% { transform: rotateY(180deg); animation-timing-function: cubic-bezier(0.5, 0, 0.2, 1); }

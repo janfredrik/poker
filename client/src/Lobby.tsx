@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { RuleSet } from '../../shared/types';
 import { BUILT_IN_RULESETS } from '../../shared/presets';
-import { call, prefs, tokens } from './lib/socket';
+import { call, prefs, socket, tokens } from './lib/socket';
 import { RulesPicker } from './ui/RulesPicker';
 import { PlayingCard } from './table/Card';
 import { ThemePicker } from './ui/ThemePicker';
@@ -17,6 +17,7 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
   const [code, setCode] = useState(prefs.get('createCode'));
 
   useEffect(() => {
+    socket.connect();
     fetch('/api/config').then((r) => r.json()).then((c: { needsCode?: boolean }) => setNeedsCode(Boolean(c.needsCode))).catch(() => {});
   }, []);
 

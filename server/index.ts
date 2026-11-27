@@ -205,6 +205,20 @@ io.on('connection', (raw) => {
     if (p && old?.id !== p.id) { p.connections++; t.connectionChanged(p); }
   };
 
+  /** This socket is gone from its table (disconnected, or joined another table). */
+  const release = () => {
+    const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
+    if (!t) return;
+    const p = t.player(s.data.playerId);
+    if (p) {
+      p.connections = Math.max(0, p.connections - 1);
+      if (p.connections === 0) { p.camOn = false; p.micOn = false; }
+      t.connectionChanged(p);
+    }
+    t.onChange();
+    sendPeers(t);
+  };
+
   const allowGamePacket = packetBudget(30);
   const allowReaction = packetBudget(5);
   // Offers, answers and trickled ICE candidates arrive in bursts for every peer at the table.
@@ -258,7 +272,12 @@ io.on('connection', (raw) => {
       playerId = p.id;
       handed = { token: p.token, keepCam: h!.keepCam };
     }
-    if (s.data.tableId && s.data.tableId !== t.id) s.leave(s.data.tableId);
+    if (s.data.tableId && s.data.tableId !== t.id) {
+      // Leave the old table like a disconnect would, so the seat there doesn't look connected forever.
+      s.leave(s.data.tableId);
+      release();
+      s.data.playerId = undefined;
+    }
     s.data.tableId = t.id;
     s.join(t.id);
     attach(t, playerId);
@@ -320,8 +339,7 @@ io.on('connection', (raw) => {
     const { t, p } = me();
     const msg = String(text ?? '').replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, 300);
     if (!msg) return;
-    t.log.push({ t: Date.now(), kind: 'chat', text: msg, by: p.name });
-    if (t.log.length > 200) t.log.splice(0, t.log.length - 200);
+    t.addLog('chat', msg, p.name);
     t.onChange();
   }));
 
@@ -378,18 +396,7 @@ io.on('connection', (raw) => {
     target.emit('rtc:signal', { from: s.id, data: msg.data });
   });
 
-  s.on('disconnect', () => {
-    const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
-    if (!t) return;
-    const p = t.player(s.data.playerId);
-    if (p) {
-      p.connections = Math.max(0, p.connections - 1);
-      if (p.connections === 0) { p.camOn = false; p.micOn = false; }
-      t.connectionChanged(p);
-    }
-    t.onChange();
-    sendPeers(t);
-  });
+  s.on('disconnect', release);
 });
 
 /* ---------------- loops & lifecycle ---------------- */

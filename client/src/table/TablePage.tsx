@@ -121,12 +121,14 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
   /* ---- connection ---- */
   useEffect(() => {
+    let active = true;
     const join = () => {
+      if (!active) return;
       const code = pendingHandoff;
       pendingHandoff = null;
       call<{ token: string; keepCam: boolean } | undefined>('table:join', { tableId, token: tokens.get(tableId), handoff: code ?? undefined })
         .then((res) => {
-          if (!res) return;
+          if (!res || !active) return;
           tokens.set(tableId, res.token);
           try {
             if (res.keepCam) sessionStorage.setItem(`homegame:remoteCam:${tableId}`, '1');
@@ -134,7 +136,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
           } catch { /* private mode */ }
           setArrived(res.keepCam ? 'remote' : 'ask');
         })
-        .catch((e: Error) => setFatal(e.message));
+        .catch((e: Error) => { if (active) setFatal(e.message); });
     };
     const onHandoff = async ({ keepCam }: { keepCam: boolean }) => {
       setPhoneOpen(false);
@@ -143,7 +145,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
       if (keepCam) { setHandedOff('camera'); return; }
       setHandedOff('moved');
       await mesh.stopAll();
-      socket.disconnect();
+      if (active) socket.disconnect();
     };
     const onState = (v: TableView) => {
       mesh.setIdentity(v.you.playerId);
@@ -157,13 +159,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('handoff:done', onHandoff);
-    if (socket.connected) join();
+    if (socket.connected) queueMicrotask(join);
+    else socket.connect();
     return () => {
+      active = false;
       socket.off('state', onState);
       socket.off('table:closed', onClosed);
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('handoff:done', onHandoff);
+      void mesh.stopAll();
+      socket.disconnect();
     };
   }, [tableId]);
 
@@ -232,7 +238,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     for (const p of view!.players) if (p.equity != null) duelRef.current.eq[p.id] = p.equity;
   }
   const duel = vh && duelRef.current?.hand === vh.number ? duelRef.current : null;
-  const duelLive = !!duel && !vh?.winners;
+  const duelLive = !!duel && !vh?.winners && view?.status === 'running';
   // a slow heartbeat under the run-out
   useEffect(() => {
     if (!duelLive) return;
@@ -240,13 +246,6 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     const t = setInterval(heartbeatSound, 1300);
     return () => clearInterval(t);
   }, [duelLive]);
-  // the river turns over a moment after it lands (see .squeeze in styles.css)
-  const squeezing = duelLive && vh?.board.length === 5;
-  useEffect(() => {
-    if (!squeezing) return;
-    const t = setTimeout(flipSound, 1050);
-    return () => clearTimeout(t);
-  }, [squeezing]);
   const rareWin = vh?.winners?.find((w) => w.hand && RARE.test(w.hand)) ?? null;
   const rareKey = rareWin ? vh!.number : null;
   useEffect(() => {
@@ -476,7 +475,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                     </span>
                   )}
                 </div>
-                <div className={`board ${rareWin ? 'is-rare' : ''}`} aria-label="Board">
+                <div className={`board ${rareWin ? 'is-rare' : ''}`} aria-label="Board" data-paused={pausedMidHand}
+                  onAnimationEnd={(e) => { if (duelLive && e.animationName === 'squeeze') flipSound(); }}>
                   {Array.from({ length: 5 }, (_, i) => {
                     const c = hand.board[i] ?? hand.rabbitCards?.[i - hand.board.length];
                     if (c && i === 4 && duel && hand.board.length === 5) {
@@ -738,7 +738,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
               <p className="field__hint">Du spiller nå på denne mobilen. Slå på kameraet og mikrofonen slik at de andre kan se og høre deg.</p>
               <div className="sheet__actions">
                 <button className="btn btn--quiet" onClick={() => setArrived(null)}>Ikke nå</button>
-                <button className="btn btn--act" onClick={async () => { setArrived(null); unlockAudio(); await mesh.setCam(true); await mesh.setMic(true); }}>Slå på kamera og mikrofon</button>
+                <button className="btn btn--act" onClick={() => { setArrived(null); unlockAudio(); void mesh.enableCameraAndMic(); }}>Slå på kamera og mikrofon</button>
               </div>
             </div>
           </div>

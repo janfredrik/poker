@@ -42,3 +42,45 @@ test('play a few hands against a bot', async ({ page }) => {
   await expect.poll(() => handNumber).toBeGreaterThanOrEqual(2);
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+
+test('leaving the table stops capture and preserves the seat for the return trip', async ({ page, browser }) => {
+  await page.goto('/');
+  await page.getByLabel('Ditt navn').fill('Hanna');
+  await page.getByRole('radio', { name: '1' }).click();
+  await page.getByRole('button', { name: 'Spill mot 1 bot' }).click();
+  await expect(page.getByText('(du)')).toBeVisible();
+
+  const capture = await page.evaluateHandle(() => {
+    const tracks: MediaStreamTrack[] = [];
+    const devices = navigator.mediaDevices;
+    const acquire = devices.getUserMedia.bind(devices);
+    devices.getUserMedia = async constraints => {
+      const stream = await acquire(constraints);
+      tracks.push(...stream.getTracks());
+      return stream;
+    };
+    return tracks;
+  });
+  await page.getByTitle('Slå på kameraet').click();
+  await page.getByTitle('Slå på mikrofonen').click();
+  await expect(page.getByTitle('Slå av mikrofonen')).toBeVisible();
+  expect(await capture.evaluate(tracks => tracks.map(t => t.readyState))).toEqual(['live', 'live']);
+
+  const observer = await browser.newPage();
+  try {
+    await observer.goto(page.url());
+    const seat = observer.locator('.seat').filter({ has: observer.getByText('Hanna', { exact: true }) });
+    await expect(seat).toBeVisible();
+    await page.goBack();
+    await expect(page.getByLabel('Ditt navn')).toBeVisible();
+    expect(await capture.evaluate(tracks => tracks.map(t => t.readyState))).toEqual(['ended', 'ended']);
+    await expect(seat.getByTitle('Frakoblet')).toBeVisible();
+    await page.goForward();
+    await expect(page.getByText('(du)')).toBeVisible();
+    await expect(page.getByTitle('Slå på kameraet')).toBeVisible();
+    await expect(page.getByTitle('Slå på mikrofonen')).toBeVisible();
+    await expect(seat.getByTitle('Frakoblet')).toHaveCount(0);
+  } finally {
+    await observer.close();
+  }
+});
