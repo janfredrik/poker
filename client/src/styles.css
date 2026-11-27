@@ -1213,8 +1213,9 @@ body:has(.lobby) { overflow: auto; }
   border: 1px solid var(--line-2); cursor: pointer;
 }
 .phone__choice button span { font-size: 13px; color: var(--muted); }
-.phone__choice button.is-on { border-color: var(--bone); background: rgb(var(--fg-rgb) / 0.06); }
-.phone__qr { display: grid; place-items: center; aspect-ratio: 1; width: min(240px, 100%, 32dvh); justify-self: center; border-radius: 12px; background: #f4ecdf; overflow: hidden; }
+.phone__choice button:hover, .phone__choice button:focus-visible { border-color: var(--bone); background: rgb(var(--fg-rgb) / 0.06); }
+.phone__picked { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0; font-size: 14px; color: var(--muted); }
+.phone__qr { display: grid; place-items: center; aspect-ratio: 1; width: min(260px, 100%, 45dvh); justify-self: center; border-radius: 12px; background: #f4ecdf; overflow: hidden; }
 .phone__qr > span[role="img"], .phone__qr svg { display: block; width: 100%; height: 100%; }
 .phone__wait, .phone__err { color: var(--ink); font-size: 14px; padding: 16px; text-align: center; }
 .banner--action { display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); }
