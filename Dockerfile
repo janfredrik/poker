@@ -1,7 +1,7 @@
 # ---- build ----
 # Runs natively on the CI runner; the output (dist + pure-JS node_modules) is
 # platform-independent, so arm64 doesn't need npm/vite under QEMU emulation.
-FROM --platform=$BUILDPLATFORM node:22-alpine AS build
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -9,7 +9,7 @@ COPY . .
 RUN npm run build && npm prune --omit=dev
 
 # ---- run ----
-FROM node:22-alpine
+FROM node:24-alpine
 ENV NODE_ENV=production PORT=3000 DATA_DIR=/data
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
