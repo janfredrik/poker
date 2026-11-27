@@ -70,7 +70,6 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
         <div className="lobby__lamp" aria-hidden="true" />
         <header className="lobby__head">
           <h1 className="lobby__title">Inviter til <span>poker i kveld</span></h1>
-          <p className="lobby__lede">Velg regler, del lenken og spill poker med vennene dine på video.</p>
         </header>
 
       <form className="lobby__card" onSubmit={create}>
@@ -102,7 +101,6 @@ export function Lobby({ navigate }: { navigate: (path: string) => void }) {
           <label className="field field--wide">
             <span className="field__label">Kode for å åpne bord</span>
             <input type="password" value={code} onChange={(e) => setCode(e.target.value)} maxLength={100} autoComplete="off" />
-            <span className="field__hint">Får du fra den som drifter serveren. Vennene dine trenger den ikke, de blir med via lenken.</span>
           </label>
         )}
 
