@@ -587,8 +587,10 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         {shown.map((seatNo) => {
           const p = bySeat.get(seatNo) ?? null;
           const inDuel = !!p && duelists.length > 1 && duelists.some((d) => d.id === p.id);
-          // duellists lean in towards the felt
-          const pos = inDuel ? lerp(posOf(seatNo), CENTER, 0.035) : posOf(seatNo);
+          // duellists lean in towards the felt, except the bottom seat, which would cover the equity bar
+          const home = posOf(seatNo);
+          const atBottom = home.y > 70;
+          const pos = inDuel && !atBottom ? lerp(home, CENTER, 0.035) : home;
           const isYou = !!p && p.id === view.you.playerId;
           // On a phone whose camera stayed on the other screen, show that screen's feed on your own seat.
           // Demo bots get a drawn camera feed.
@@ -596,7 +598,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             : isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null;
           // occupied seats are keyed by player so a seat shuffle animates faces across the table
           return (
-            <div className={`seat-anchor ${p ? 'is-taken' : ''} ${inDuel ? 'is-duelist' : ''}`} data-player={p?.id} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+            <div className={`seat-anchor ${p ? 'is-taken' : ''} ${inDuel ? 'is-duelist' : ''} ${atBottom ? 'is-bottom' : ''}`} data-player={p?.id} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
               <Seat
                 seatNo={seatNo}
                 player={p}

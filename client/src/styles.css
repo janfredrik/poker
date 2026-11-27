@@ -1129,6 +1129,11 @@ body:has(.lobby) { overflow: auto; }
 .room.is-duel .seat-anchor:not(.is-duelist) .seat:not(.seat--empty) { filter: brightness(0.45) saturate(0.6); }
 .room.is-duel .seat-anchor.is-duelist { z-index: 4; scale: 1.12; }
 .room.is-duel .seat__equity { display: none; }
+/* keep the equity bar clear of the bottom seat: a shorter pot above it, and that seat grows downwards */
+.room.is-duel .pot .chips { display: none; }
+.room.is-duel .pot__amount { font-size: clamp(26px, 3vw, 40px); }
+.room.is-duel .felt__center { gap: clamp(6px, 1vmin, 12px); }
+.room.is-duel .seat-anchor.is-duelist.is-bottom { transform-origin: 50% 0; }
 .duel-light {
   position: absolute; z-index: 2; translate: -50% -50%;
   width: min(42vmin, 440px); aspect-ratio: 1; border-radius: 50%;
