@@ -37,3 +37,30 @@ export function chipSound() {
   tone(2200, 0, 0.04, 0.025);
   tone(1600, 0.03, 0.05, 0.02);
 }
+
+/** A low, soft double thump, repeated while an all-in runs out. */
+export function heartbeatSound() {
+  unlockAudio();
+  tone(150, 0, 0.14, 0.05);
+  tone(128, 0.17, 0.18, 0.04);
+}
+
+/** A card snapped face up. */
+export function flipSound() {
+  unlockAudio();
+  tone(1900, 0, 0.03, 0.03);
+  tone(950, 0.02, 0.07, 0.025);
+}
+
+/** The light switch over a seat going off. */
+export function switchOffSound() {
+  unlockAudio();
+  tone(2600, 0, 0.02, 0.03);
+  tone(420, 0.02, 0.09, 0.02);
+}
+
+/** Four rising notes for a hand you see once in a long evening. */
+export function rareHandSound() {
+  unlockAudio();
+  [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.09, 0.7 + i * 0.1, 0.035));
+}

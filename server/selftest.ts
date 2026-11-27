@@ -118,7 +118,8 @@ deepStrictEqual(await allInShowdown([101, 101, 101], [['As', 'Ad'], ['Qs', 'Qd']
   check();
   t.onChange = check;
   while (!h.finished) await sleep(1);
-  assert([...boards].join(',') === '0,3,4', 'odds published before each remaining street');
+  // 5: the river lies face down for a moment, still with the odds from before it
+  assert([...boards].join(',') === '0,3,4,5', 'odds published before each remaining street');
   assert(t.view(null).players.every(p => p.equity === null), 'showdown clears odds');
   t.dispose();
 }

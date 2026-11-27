@@ -129,6 +129,8 @@ const SHOWDOWN_DELAY = FAST ? 1 : 7000;
 const RUNOUT_FIRST = FAST ? 1 : 3000;
 const RUNOUT_STEP = FAST ? 1 : 2500;
 const RUNOUT_RIVER = FAST ? 1 : 3500;
+/** The run-out river lands face down and is turned over on the clients before the showdown. */
+const RUNOUT_SQUEEZE = FAST ? 1 : 1700;
 /** A disconnected player gets this long (counted from when they dropped) before they auto check/fold. */
 const DISCONNECTED_TURN_MS = 20000;
 /** …but never less than this once it is their turn, so the table can see what happens. */
@@ -1047,6 +1049,15 @@ export class Table {
       this.later(wait, () => {
         if (this.hand !== h || h.finished || h.board.length !== boardLength) return;
         this.dealStreet();
+        if (h.board.length === 5) {
+          this.touch();
+          this.later(RUNOUT_SQUEEZE, () => {
+            if (this.hand !== h || h.finished) return;
+            this.advance();
+            this.touch();
+          });
+          return;
+        }
         this.advance();
         this.touch();
       });

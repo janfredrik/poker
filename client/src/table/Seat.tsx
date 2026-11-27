@@ -65,9 +65,11 @@ interface SeatProps {
   usingBank?: boolean;
   /** Your own hole cards, shown face up on your seat. Only ever passed for your own seat. */
   holeCards?: Card[];
+  /** Just knocked out of the tournament: the light over the seat flickers off. */
+  busting?: boolean;
 }
 
-export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank, holeCards }: SeatProps) {
+export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank, holeCards, busting }: SeatProps) {
   if (!player) {
     return (
       <div className="seat seat--empty">
@@ -85,7 +87,8 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
   const showVideo = player.camOn && stream && stream.getVideoTracks().some((track) => track.readyState === 'live');
   const cards = player.shownCards ?? (player.hasCards ? [null, null] : []);
   const out = player.status === 'seated' && player.stack === 0 && !player.inHand;
-  const state = player.place != null && player.stack === 0 ? `Ute · ${player.place}. plass`
+  const knockedOut = player.place != null && player.stack === 0;
+  const state = knockedOut ? `Ute · ${player.place}. plass`
     : acting && usingBank ? 'Tidsbank'
     : pending ? 'Venter på verten'
     : !player.connected ? 'Frakoblet'
@@ -104,9 +107,12 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         player.folded && 'is-folded',
         speaking && 'is-speaking',
         winner && 'is-winner',
+        knockedOut && 'is-out',
+        busting && 'is-busting',
         (player.sittingOut || !player.connected || out || pending) && 'is-idle',
       ].filter(Boolean).join(' ')}
     >
+      {busting && <span className="seat__light" aria-hidden="true" />}
       <button className="seat__frame" onClick={() => onOpen?.(player)} aria-label={`${player.name}, ${formatChips(player.stack)} chips${player.handsWon ? `, ${player.handsWon} ${player.handsWon === 1 ? 'hånd' : 'hender'} vunnet` : ''}`}>
         {showVideo ? (
           <VideoFeed stream={stream} mirror={isYou} />

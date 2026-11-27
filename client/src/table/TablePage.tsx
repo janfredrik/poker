@@ -5,9 +5,9 @@ import { formatChips } from '../../../shared/presets';
 import { call, prefs, socket, tokens } from '../lib/socket';
 import { mesh, useMedia, useNow } from '../lib/media';
 import { fakeCam } from '../lib/fakecam';
-import { chipSound, unlockAudio, yourTurnSound } from '../lib/sound';
+import { chipSound, flipSound, heartbeatSound, rareHandSound, switchOffSound, unlockAudio, yourTurnSound } from '../lib/sound';
 import { formatResults } from '../lib/results';
-import { PlayingCard } from './Card';
+import { PlayingCard, SqueezeCard } from './Card';
 import { ChipStack, setChipScale } from './Chips';
 import { Dock } from './Dock';
 import { Drawer, type DrawerTab } from './Drawer';
@@ -30,6 +30,12 @@ const TALL: Pt[] = [
 ];
 const CENTER: Pt = { x: 50, y: 48 };
 const lerp = (a: Pt, b: Pt, t: number): Pt => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+
+/** Hands rare enough to stop the table: four of a kind and better. */
+const RARE = /^(Four |Straight Flush|Royal Flush)/;
+/** A winner who had at most this much equity before the river took a bad beat to the others. */
+const BAD_BEAT_EQUITY = 20;
+const pct = (n: number) => `${n.toLocaleString('nb-NO', { maximumFractionDigits: 1 })} %`;
 
 // Only taken seats (plus one open one) are drawn. Where the n-th of them sits, as positions on the
 // nine anchors above (x.5 = halfway along a straight edge: the side rails, or the top centre).
@@ -217,6 +223,64 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
     return () => clearTimeout(t);
   }, [view?.hand?.number, view?.hand?.winners]);
 
+  /* ---- all-in duel: who is in it and their last equity, kept through the showdown ---- */
+  const duelRef = useRef<{ hand: number; eq: Record<string, number> } | null>(null);
+  const vh = view?.hand ?? null;
+  if (vh && view!.players.some((p) => p.equity != null)) {
+    if (duelRef.current?.hand !== vh.number) duelRef.current = { hand: vh.number, eq: {} };
+    for (const p of view!.players) if (p.equity != null) duelRef.current.eq[p.id] = p.equity;
+  }
+  const duel = vh && duelRef.current?.hand === vh.number ? duelRef.current : null;
+  const duelLive = !!duel && !vh?.winners;
+  // a slow heartbeat under the run-out
+  useEffect(() => {
+    if (!duelLive) return;
+    heartbeatSound();
+    const t = setInterval(heartbeatSound, 1300);
+    return () => clearInterval(t);
+  }, [duelLive]);
+  // the river turns over a moment after it lands (see .squeeze in styles.css)
+  const squeezing = duelLive && vh?.board.length === 5;
+  useEffect(() => {
+    if (!squeezing) return;
+    const t = setTimeout(flipSound, 1050);
+    return () => clearTimeout(t);
+  }, [squeezing]);
+  const rareWin = vh?.winners?.find((w) => w.hand && RARE.test(w.hand)) ?? null;
+  const rareKey = rareWin ? vh!.number : null;
+  useEffect(() => {
+    if (rareKey == null) return;
+    const t = setTimeout(rareHandSound, 350);
+    return () => clearTimeout(t);
+  }, [rareKey]);
+
+  /* ---- the tournament's last hand stays on the felt for a while before the results take over ---- */
+  const finishedNow = view?.status === 'finished';
+  const sawPlay = useRef(false);
+  const [resultsReady, setResultsReady] = useState(true);
+  useEffect(() => {
+    if (!view) return;
+    if (!finishedNow) { sawPlay.current = true; setResultsReady(false); return; }
+    if (!sawPlay.current || !view.hand?.winners) { setResultsReady(true); return; }
+    const t = setTimeout(() => setResultsReady(true), 6500);
+    return () => clearTimeout(t);
+  }, [finishedNow, !!view]);
+
+  /* ---- knocked out: the light over that seat flickers off ---- */
+  const places = useRef<Map<string, number | null> | null>(null);
+  const [busting, setBusting] = useState<string[]>([]);
+  useEffect(() => {
+    if (!view) return;
+    const prev = places.current;
+    places.current = new Map(view.players.map((p) => [p.id, p.place]));
+    if (!prev) return;
+    const out = view.players.filter((p) => p.place != null && p.place > 1 && p.stack === 0 && prev.has(p.id) && prev.get(p.id) == null).map((p) => p.id);
+    if (!out.length) return;
+    setBusting((b) => [...b, ...out]);
+    setTimeout(switchOffSound, 250);
+    setTimeout(() => setBusting((b) => b.filter((id) => !out.includes(id))), 2600);
+  }, [view]);
+
   /* ---- derived ---- */
   const me = view?.players.find((p) => p.id === view.you.playerId) ?? null;
   const mySeat = me?.status === 'seated' ? me.seat : me?.status === 'pending' ? me.requestedSeat : null;
@@ -284,7 +348,9 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const acting = hand?.toActId ?? null;
   const actingSeat = acting ? view.players.find((p) => p.id === acting)?.seat ?? null : null;
   const winnerSeat = hand?.winners?.length ? view.players.find((p) => p.id === hand.winners![0].playerId)?.seat ?? null : null;
-  const lampSeat = actingSeat ?? winnerSeat;
+  const showResults = view.status === 'finished' && resultsReady;
+  const championSeat = showResults ? view.players.find((p) => p.place === 1)?.seat ?? null : null;
+  const lampSeat = championSeat ?? actingSeat ?? winnerSeat;
   const lamp = lampSeat ? lerp(posOf(lampSeat), CENTER, 0.18) : CENTER;
   const turnLeft = !hand?.turnMs ? null
     : hand.turnEndsAt ? Math.max(0, (hand.turnEndsAt - now) / hand.turnMs)
@@ -295,6 +361,11 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   const pots = hand?.pots ?? [];
   const potTotal = hand?.potTotal ?? 0;
   const potWithBets = potTotal + view.players.reduce((sum, p) => sum + p.bet, 0);
+  // the duellists, left to right on screen, with their share of the bar (the winners take it all at the end)
+  const duelists = duel && !showResults ? view.players.filter((p) => p.id in duel.eq && p.seat).sort((a, b) => posOf(a.seat!).x - posOf(b.seat!).x) : [];
+  const duelWinners = hand?.winners ? duelists.filter((p) => hand.winners!.some((w) => w.playerId === p.id && w.amount > 0)) : [];
+  const share = (id: string) => hand?.winners ? (duelWinners.some((p) => p.id === id) ? 100 / Math.max(1, duelWinners.length) : 0) : duel?.eq[id] ?? 0;
+  const badBeat = duelWinners.length === 1 && duel && duel.eq[duelWinners[0].id] <= BAD_BEAT_EQUITY ? duelWinners[0] : null;
   // where a player's chips sit on the felt: between their seat and the pot
   const betSpot = (pos: Pt): Pt => tall && pos.y >= 25 && pos.y <= 70
     ? { x: pos.x + (CENTER.x - pos.x) * 0.5, y: pos.y + (pos.y < CENTER.y ? -4 : 4) }
@@ -356,7 +427,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         watchers={media.spectators + view.players.filter((x) => x.status === 'watching' && x.connected && x.id !== view.you.playerId).length}
       />
 
-      <main ref={roomRef} className={`room ${acting ? 'has-turn' : ''}`} style={{ ['--lamp-x' as string]: `${lamp.x}%`, ['--lamp-y' as string]: `${lamp.y}%` }}>
+      <main ref={roomRef} className={`room ${acting ? 'has-turn' : ''} ${duel && duelists.length > 1 && !showResults ? 'is-duel' : ''} ${showResults ? 'is-finished' : ''}`} style={{ ['--lamp-x' as string]: `${lamp.x}%`, ['--lamp-y' as string]: `${lamp.y}%` }}>
         <div className={`room__lamp ${acting ? 'is-turn' : ''}`} aria-hidden="true" />
         <div className="felt" aria-hidden="false">
           <div className="felt__center">
@@ -368,7 +439,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 </div>
                 <p className="felt__text">{view.shuffling < 3 ? `Runde ${view.shuffling} av 3` : 'Setene er fordelt. Deler ut kort …'}</p>
               </div>
-            ) : view.status === 'finished' ? (
+            ) : showResults ? (
               <div className="felt__waiting results">
                 <h2 className="felt__title">{view.players.find((p) => p.place === 1)?.name ?? 'En spiller'} vinner turneringen</h2>
                 {view.results ? (
@@ -390,7 +461,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                   <button className="btn btn--quiet" onClick={() => navigate('/')}>Nytt bord</button>
                 </div>
               </div>
-            ) : hand && !(view.status !== 'running' && hand.winners) ? (
+            ) : hand && (!hand.winners || view.status === 'running' || view.status === 'finished') ? (
               <>
                 <div className="pot" aria-live="polite" ref={potElRef}>
                   {potTotal > 0 && <ChipStack amount={potTotal} label={false} size="lg" />}
@@ -402,18 +473,41 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                     </span>
                   )}
                 </div>
-                <div className="board" aria-label="Board">
+                <div className={`board ${rareWin ? 'is-rare' : ''}`} aria-label="Board">
                   {Array.from({ length: 5 }, (_, i) => {
                     const c = hand.board[i] ?? hand.rabbitCards?.[i - hand.board.length];
+                    if (c && i === 4 && duel && hand.board.length === 5) {
+                      return <SqueezeCard key={c} card={c} highlight={winCards.has(c)} dim={!!hand.winners && winCards.size > 0 && !winCards.has(c)} />;
+                    }
                     return c ? (
                       <PlayingCard key={c} card={c} size="md" highlight={winCards.has(c)} dim={i >= hand.board.length || (!!hand.winners && winCards.size > 0 && !winCards.has(c))} delay={i < 3 ? i * 80 : 0} />
                     ) : <PlayingCard key={`e${i}`} empty size="md" />;
                   })}
                 </div>
-                {hand.winners && hand.winners[0]?.hand && (
+                {duelists.length > 1 && (
+                  <div className="duelbar" role="img" aria-label={`Equity i main pot: ${duelists.map((p) => `${p.name} ${pct(share(p.id))}`).join(', ')}`}>
+                    <div className="duelbar__track">
+                      {duelists.map((p) => <span key={p.id} style={{ flexGrow: share(p.id) }} />)}
+                    </div>
+                    <div className="duelbar__names" aria-hidden="true">
+                      {duelists.map((p) => (
+                        <span key={p.id}><b>{pct(share(p.id))}</b> {p.name}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {rareWin ? (
+                  <div className="rare" role="status">
+                    <span className="rare__hand">{rareWin.hand!.split(',')[0]}</span>
+                    <span className="rare__who">{view.players.find((p) => p.id === rareWin.playerId)?.name ?? 'En spiller'}{rareWin.hand!.includes(',') ? ` · ${rareWin.hand!.split(',').slice(1).join(',').trim()}` : ''}</span>
+                  </div>
+                ) : hand.winners && hand.winners[0]?.hand && (
                   <p className="felt__result">
                     {hand.winners.map((w) => `${view.players.find((p) => p.id === w.playerId)?.name ?? 'En spiller'} · ${w.hand}`).join('  ·  ')}
                   </p>
+                )}
+                {badBeat && (
+                  <p className="felt__badbeat">Bad beat · {badBeat.name} hadde {pct(duel!.eq[badBeat.id])} før river</p>
                 )}
               </>
             ) : (
@@ -489,7 +583,9 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
 
         {shown.map((seatNo) => {
           const p = bySeat.get(seatNo) ?? null;
-          const pos = posOf(seatNo);
+          const inDuel = !!p && duelists.length > 1 && duelists.some((d) => d.id === p.id);
+          // duellists lean in towards the felt
+          const pos = inDuel ? lerp(posOf(seatNo), CENTER, 0.035) : posOf(seatNo);
           const isYou = !!p && p.id === view.you.playerId;
           // On a phone whose camera stayed on the other screen, show that screen's feed on your own seat.
           // Demo bots get a drawn camera feed.
@@ -497,7 +593,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             : isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null;
           // occupied seats are keyed by player so a seat shuffle animates faces across the table
           return (
-            <div className={`seat-anchor ${p ? 'is-taken' : ''}`} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+            <div className={`seat-anchor ${p ? 'is-taken' : ''} ${inDuel ? 'is-duelist' : ''}`} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
               <Seat
                 seatNo={seatNo}
                 player={p}
@@ -514,9 +610,17 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 onOpen={() => { if (view.you.isHost) { setDrawer(true); setTab('players'); } }}
                 face={pos.y > 70 ? 'up' : pos.y < 25 ? 'down' : pos.x < 50 ? 'right' : 'left'}
                 holeCards={isYou ? view.you.holeCards : undefined}
+                busting={!!p && busting.includes(p.id)}
               />
             </div>
           );
+        })}
+
+        {/* a white light over each duellist; it goes out over whoever lost */}
+        {duelists.length > 1 && duelists.map((p) => {
+          const at = lerp(posOf(p.seat!), CENTER, 0.15);
+          const lost = !!hand?.winners && !duelWinners.some((w) => w.id === p.id);
+          return <div key={p.id} className={`duel-light ${lost ? 'is-off' : ''}`} aria-hidden="true" style={{ left: `${at.x}%`, top: `${at.y}%` }} />;
         })}
 
         <DealerSeat view={view} tall={tall} />{/* AI-dealer */}

@@ -307,6 +307,12 @@ A visitor opening the link who is not the host and has no seat sees the felt cen
 ### Lobby Opening (signature, the app's one authored entrance)
 On load the lamp switches on over the lobby stage with a short flicker (1.4s: on, off, on, settle) and the two aces are tossed onto the rail from the top right with heavy rotation, the dealer button dropping in after. The cards are decoration (aria-hidden), and on hover they lift apart as if someone is peeking. Reduced motion collapses all of it to the final state.
 
+### Big moments (signature)
+Three moments get more than the Dim Room Rule, all told with light, scale and pacing, never with new colours or confetti. Reduced motion collapses each to its end state.
+- **All-in duel** (a called all-in with cards still to come): the felt deepens to `felt-700`, the amber lamp goes out, seats outside the hand drop to `brightness(0.45) saturate(0.6)`, and the players who are all-in scale to 1.12 (1.06 in portrait) and lean 3.5% toward the centre, each under a warm-*white* radial pool (not amber: nobody can act). Under the board, one exact-length 8px bar splits main-pot equity between them (bone and 40% bone segments, names and percentages beneath) and shifts with every card. The river lands face down, holds a breath (the server waits 1.7s before the showdown) and turns over with a lift; a soft low heartbeat runs under the run-out, and a snap sounds as the card turns. At the showdown the bar goes to the winner and the losers' lights fade. A winner who had at most 20% before the river gets a quiet line: "Bad beat · {name} hadde {x} % før river".
+- **Knocked out** (tournament): the light over the seat flickers off (the lobby lamp's flicker in reverse, 1.5s) with a switch click, then the face goes grey (`grayscale(1) brightness(0.5)`) and the place tag rises. When the tournament is won, the last hand stays on the felt for 6.5s before the results take over and the room lamp switches on again over the champion.
+- **Rare hand** (four of a kind, straight flush, royal flush): the winning board cards lift 16%, the rest dim, and the hand name takes over the felt at display size (clamp(32px, 4.8vw, 66px), 800) while the pot steps down to title size. Four rising notes play.
+
 ## Do's and Don'ts
 
 ### Do:

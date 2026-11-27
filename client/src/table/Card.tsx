@@ -30,6 +30,18 @@ interface Props {
   delay?: number;
 }
 
+/** The run-out river: lands face down, waits a breath, then turns over. Plays once when it mounts. */
+export function SqueezeCard({ card, highlight, dim }: { card: CardT; highlight?: boolean; dim?: boolean }) {
+  return (
+    <span className="squeeze">
+      <span className="squeeze__turn">
+        <PlayingCard card={card} size="md" highlight={highlight} dim={dim} />
+        <span className="card card--md card--back squeeze__back" aria-hidden="true" />
+      </span>
+    </span>
+  );
+}
+
 export function PlayingCard({ card, size = 'md', faceDown, highlight, dim, empty, delay = 0 }: Props) {
   if (empty) return <span className={`card card--${size} card--slot`} aria-hidden="true" />;
   if (faceDown || !card) {
