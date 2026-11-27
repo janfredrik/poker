@@ -63,6 +63,11 @@ interface HandPlayer {
   vpip?: boolean;
   pfr?: boolean;
   wonShowdown?: boolean;
+  sawFlop?: boolean;
+  wentToShowdown?: boolean;
+  /** Bets and raises after the flop, for the aggression factor. */
+  postflopAggr?: number;
+  postflopCalls?: number;
 }
 
 interface Hand {
@@ -983,6 +988,7 @@ export class Table {
         if (legal.callAmount === 0) { hp.lastAction = 'Check'; this.addLog('action', `${p.name} checker`); break; }
         pay(legal.callAmount);
         if (h.street === 'preflop') hp.vpip = true;
+        else hp.postflopCalls = (hp.postflopCalls ?? 0) + 1;
         hp.lastAction = hp.allIn ? 'All-in' : 'Call';
         this.addLog('action', `${p.name} caller ${fc(legal.callAmount)}${hp.allIn ? ' og er all-in' : ''}`);
         break;
@@ -997,7 +1003,7 @@ export class Table {
         const wasBet = h.currentBet === 0;
         const raiseSize = to - h.currentBet;
         pay(to - hp.bet);
-        if (h.street === 'preflop') { hp.vpip = true; hp.pfr = true; }
+        if (h.street === 'preflop') { hp.vpip = true; hp.pfr = true; } else hp.postflopAggr = (hp.postflopAggr ?? 0) + 1;
         if (raiseSize >= h.lastRaiseSize) {
           h.lastRaiseSize = raiseSize;
           h.fullRaiseCount++;
@@ -1088,6 +1094,7 @@ export class Table {
     const h = this.hand!;
     h.board.push(...drawCommunityCards(h.deck, h.board.length));
     h.street = h.board.length === 3 ? 'flop' : h.board.length === 4 ? 'turn' : 'river';
+    if (h.street === 'flop') for (const x of h.players) if (!x.folded) x.sawFlop = true;
     this.addLog('hand', `${h.street[0].toUpperCase()}${h.street.slice(1)}: ${h.board.join(' ')}`);
   }
 
@@ -1127,7 +1134,7 @@ export class Table {
     const h = this.hand!;
     h.street = 'showdown';
     const contenders = h.players.filter((x) => !x.folded);
-    for (const x of contenders) x.shown = true;
+    for (const x of contenders) { x.shown = true; if (contenders.length > 1) x.wentToShowdown = true; }
     const values = new Map(contenders.map((x) => [x.id, bestHand([...x.hole, ...h.board])]));
     const pots = this.computePots();
     const won = new Map<string, { amount: number; hand: string; cards: Card[] }>();
@@ -1178,6 +1185,14 @@ export class Table {
     // Commit only completed hands. On restore, an interrupted hand and its flags are voided.
     for (const hp of h.players) {
       const stats = this.player(hp.id)!.stats ??= emptyStats();
+      // Nights that began before these counters existed never start them, so their rates share one denominator.
+      if (stats.hands === 0 || stats.showdowns != null) {
+        stats.flopsSeen = (stats.flopsSeen ?? 0) + (hp.sawFlop ? 1 : 0);
+        stats.showdowns = (stats.showdowns ?? 0) + (hp.wentToShowdown ? 1 : 0);
+        stats.showdownsWonTracked = (stats.showdownsWonTracked ?? 0) + (hp.wonShowdown ? 1 : 0);
+        stats.postflopAggr = (stats.postflopAggr ?? 0) + (hp.postflopAggr ?? 0);
+        stats.postflopCalls = (stats.postflopCalls ?? 0) + (hp.postflopCalls ?? 0);
+      }
       stats.hands++;
       if (hp.vpip) stats.vpipHands++;
       if (hp.pfr) stats.pfrHands++;
