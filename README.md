@@ -125,6 +125,7 @@ After the relay test above succeeds, remove the old `coturn` container (`docker 
 
 ## Development
 
-- `npm test` plays ~1000 random hands against the engine and checks that chips are conserved.
+- `npm test` plays ~1000 random hands against the engine and checks that chips are conserved, then runs the client component tests (Vitest, `client/src/**/*.test.tsx`).
+- `npm run test:e2e` builds and plays a few hands against a demo bot in a real browser (Playwright, `e2e/`). Run `npx playwright install chromium` once, or set `PW_CHANNEL=chrome` to use your installed Chrome.
 - `npx tsx server/bots.ts <tableId> 4` seats four bots that play automatically, handy for testing the UI alone.
 - `npm run typecheck`, `npm run build`.

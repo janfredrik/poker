@@ -8,3 +8,5 @@ data
 .claude/
 .impeccable/hook.cache.json
 .impeccable/questions
+test-results
+playwright-report

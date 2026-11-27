@@ -11,7 +11,10 @@
     "build": "vite build && esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --target=node20 --outfile=dist/server.js",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.server.json",
-    "test": "tsx server/selftest.ts"
+    "test": "tsx server/selftest.ts && vitest run",
+    "test:server": "tsx server/selftest.ts",
+    "test:client": "vitest run",
+    "test:e2e": "npm run build && playwright test"
   },
   "dependencies": {
     "express": "^4.21.2",
@@ -19,6 +22,10 @@
   },
   "devDependencies": {
     "@fontsource-variable/figtree": "^5.1.2",
+    "@playwright/test": "^1.65.1",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.13",
     "@types/express": "^4.17.21",
     "@types/node": "^22.10.0",
     "@types/qrcode": "^1.5.5",
@@ -27,6 +34,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
     "esbuild": "^0.24.0",
+    "jsdom": "^29.1.1",
     "lucide-react": "^0.460.0",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
@@ -34,6 +42,7 @@
     "socket.io-client": "^4.8.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.3",
+    "vitest": "^3.2.7"
   }
 }

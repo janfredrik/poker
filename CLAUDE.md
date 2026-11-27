@@ -10,13 +10,19 @@ Self-hosted No-Limit Texas Hold'em for home games with friends, with per-seat vi
 npm install
 npm run dev          # server (tsx watch, :3000) + Vite client (:5173, proxies /api and /socket.io to :3000)
 npm run typecheck    # two passes: tsconfig.json (client + shared) and tsconfig.server.json (server + shared)
-npm test             # tsx server/selftest.ts — the only test suite
+npm test             # server/selftest.ts (engine), then vitest run (client components)
+npm run test:client  # vitest only; npx vitest run Dock runs one file, -t '<name>' one test
+npm run test:e2e     # build, then Playwright smoke test (e2e/) against dist/server.js on :3199
 npm run build        # vite → dist/client, esbuild → dist/server.js
 npm start            # node dist/server.js (serves dist/client if present)
 npx tsx server/bots.ts <tableId> 4   # seat 4 bots that play automatically against a running server
 ```
 
-There is no test runner and no way to run a single test: `server/selftest.ts` is one script of `assert(...)` calls (hand-evaluator cases, scenario blocks, then ~400 random games checking chip conservation). It sets `POKER_FAST=1` (shortens engine delays) and `DATA_DIR=/tmp/poker-selftest`. Add new cases as blocks in that file. CI (`.github/workflows/docker.yml`) runs typecheck + test, then builds and pushes the Docker image to GHCR on `main`.
+Engine tests: `server/selftest.ts` is one script of `assert(...)` calls with no way to run a single case (hand-evaluator cases, scenario blocks, then ~400 random games checking chip conservation). It sets `POKER_FAST=1` (shortens engine delays) and `DATA_DIR=/tmp/poker-selftest`. Add new cases as blocks in that file.
+
+Client tests: Vitest + Testing Library in jsdom (`vitest.config.ts`), next to the component as `*.test.tsx`. `client/src/test/setup.ts` mocks `lib/socket` (so nothing connects), and `client/src/test/fixtures.ts` builds `TableView`s (`view()`, `player()`, `hand()`, `legal()`) to override per test. Chip amounts contain a non-breaking space; `getByText` normalizes it to a plain space.
+
+E2E: `e2e/demo.spec.ts` opens a demo table with one bot (`POKER_FAST=1`, so bots act at once) and checks/calls through several hands, counting Socket.IO frames to confirm actions reach the server. The server allows 3 open demo tables per IP, so `--repeat-each` above 3 fails on that limit. CI (`.github/workflows/docker.yml`) runs typecheck, `npm test` and `test:e2e` (uploading Playwright traces on failure), then builds and pushes the Docker image to GHCR on `main`.
 
 `.claude/launch.json` runs the built `dist/server.js` on :3000 (or :3107), so `npm run build` before previewing.
 
