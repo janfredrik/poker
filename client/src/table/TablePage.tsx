@@ -13,6 +13,7 @@ import { Dock } from './Dock';
 import { Drawer, type DrawerTab } from './Drawer';
 import { PhoneSheet } from './PhoneSheet';
 import { Seat } from './Seat';
+import { ReactionFlights } from './Reactions';
 import { TopBar } from './TopBar';
 import { DealerSeat } from '../dealer/DealerSeat'; // AI-dealer
 import { DealerToggle } from '../dealer/DealerToggle'; // AI-dealer
@@ -402,6 +403,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
   };
 
   const tourney = view.settings.rules.levelMinutes > 0;
+  const canThrow = connected && !handedOff && me?.status === 'seated';
+  const names = Object.fromEntries(view.players.map((p) => [p.id, p.name]));
   const host = view.players.find((p) => p.isHost) ?? null;
   const guest = canSit && !view.you.isHost;
 
@@ -593,7 +596,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             : isYou ? media.local ?? media.streams[p.id] ?? null : media.streams[p.id] ?? null;
           // occupied seats are keyed by player so a seat shuffle animates faces across the table
           return (
-            <div className={`seat-anchor ${p ? 'is-taken' : ''} ${inDuel ? 'is-duelist' : ''}`} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
+            <div className={`seat-anchor ${p ? 'is-taken' : ''} ${inDuel ? 'is-duelist' : ''}`} data-player={p?.id} key={p ? p.id : `seat-${seatNo}`} style={{ left: `${pos.x}%`, top: `${pos.y}%` }}>
               <Seat
                 seatNo={seatNo}
                 player={p}
@@ -607,7 +610,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 canSit={canSit}
                 onSit={setSitAt}
                 pending={p?.status === 'pending'}
-                onOpen={() => { if (view.you.isHost) { setDrawer(true); setTab('players'); } }}
+                onOpen={view.you.isHost ? () => { setDrawer(true); setTab('players'); } : undefined}
+                canThrow={canThrow}
                 face={pos.y > 70 ? 'up' : pos.y < 25 ? 'down' : pos.x < 50 ? 'right' : 'left'}
                 holeCards={isYou ? view.you.holeCards : undefined}
                 busting={!!p && busting.includes(p.id)}
@@ -758,6 +762,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
             </div>
           ) : null}
         {toast && <div className="toast" role="alert" onClick={() => setToast(null)}>{toast}</div>}
+        <ReactionFlights room={roomRef} names={names} />
       </main>
 
       <Dock

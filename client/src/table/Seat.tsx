@@ -3,7 +3,7 @@ import { MicOff, WifiOff, Crown, Volume2, Bot, Trophy } from 'lucide-react';
 import type { Card, PublicPlayer, WinnerView } from '../../../shared/types';
 import { formatChips } from '../../../shared/presets';
 import { PlayingCard } from './Card';
-import { SeatReaction } from './Reactions';
+import { SeatReaction, ThrowMenu } from './Reactions';
 
 function VideoFeed({ stream, mirror }: { stream: MediaStream; mirror: boolean }) {
   const ref = useRef<HTMLVideoElement>(null);
@@ -67,9 +67,16 @@ interface SeatProps {
   holeCards?: Card[];
   /** Just knocked out of the tournament: the light over the seat flickers off. */
   busting?: boolean;
+  /** Tapping this seat's camera opens a menu to throw a reaction at the player. */
+  canThrow?: boolean;
 }
 
-export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank, holeCards, busting }: SeatProps) {
+export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking, winner, canSit, onSit, onOpen, pending, face = 'up', usingBank, holeCards, busting, canThrow }: SeatProps) {
+  const frame = useRef<HTMLButtonElement>(null);
+  const [menu, setMenu] = useState(false);
+  const throwable = !!canThrow && !isYou && player?.status === 'seated';
+  useEffect(() => { if (!throwable) setMenu(false); }, [throwable]);
+
   if (!player) {
     return (
       <div className="seat seat--empty">
@@ -113,7 +120,12 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
       ].filter(Boolean).join(' ')}
     >
       {busting && <span className="seat__light" aria-hidden="true" />}
-      <button className="seat__frame" onClick={() => onOpen?.(player)} aria-label={`${player.name}, ${formatChips(player.stack)} chips${player.handsWon ? `, ${player.handsWon} ${player.handsWon === 1 ? 'hånd' : 'hender'} vunnet` : ''}`}>
+      <button
+        ref={frame}
+        className={`seat__frame ${throwable || onOpen ? 'is-pressable' : ''}`}
+        onClick={() => throwable ? setMenu((m) => !m) : onOpen?.(player)}
+        {...(throwable && { 'aria-haspopup': 'true' as const, 'aria-expanded': menu })}
+        aria-label={`${player.name}, ${formatChips(player.stack)} chips${player.handsWon ? `, ${player.handsWon} ${player.handsWon === 1 ? 'hånd' : 'hender'} vunnet` : ''}`}>
         {showVideo ? (
           <VideoFeed stream={stream} mirror={isYou} />
         ) : (
@@ -132,6 +144,9 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
         </span>
       </button>
       {player.status === 'seated' && <SeatReaction playerId={player.id} name={player.name} />}
+      {menu && throwable && (
+        <ThrowMenu anchor={frame} name={player.name} playerId={player.id} onClose={() => setMenu(false)} onManage={onOpen && (() => onOpen(player))} />
+      )}
       {player.equity != null && (
         <div className="seat__equity" title="Equity i main pot · ved like hender deles potten">
           <span className="sr-only">{player.name}, equity i main pot </span>

@@ -325,11 +325,15 @@ io.on('connection', (raw) => {
     t.onChange();
   }));
 
-  s.on('reaction', (emoji: unknown) => {
+  // A bare emoji shows over your own seat; { emoji, to } throws it at another seated player.
+  s.on('reaction', (input: unknown) => {
     const t = s.data.tableId ? tables.get(s.data.tableId) : undefined;
     const p = t?.player(s.data.playerId);
+    const { emoji, to } = typeof input === 'object' && input ? input as { emoji?: unknown; to?: unknown } : { emoji: input, to: undefined };
     if (!t || p?.status !== 'seated' || !isReaction(emoji)) return;
-    io.to(t.id).emit('reaction', { playerId: p.id, emoji } satisfies SeatReactionEvent);
+    const target = to == null ? null : t.player(String(to));
+    if (to != null && (target?.status !== 'seated' || target.id === p.id)) return;
+    io.to(t.id).emit('reaction', { playerId: p.id, emoji, ...(target && { toId: target.id }) } satisfies SeatReactionEvent);
   });
 
   // host controls
