@@ -525,8 +525,8 @@ export class Table {
     const inLiveHand = !!this.handPlayer(p.id) && !!this.hand && !this.hand.finished && !this.handPlayer(p.id)!.folded;
     let reason: string | null = null;
     if (!r.enabled) reason = 'Dette spillet har ingen rebuys.';
-    else if (r.untilLevel > 0 && this.isTournament() && levelNo > r.untilLevel) reason = `Rebuy-perioden tok slutt etter nivå ${r.untilLevel}.`;
-    else if (r.untilMinutes > 0 && this.status !== 'waiting' && this.played() > r.untilMinutes * 60000) reason = `Rebuy-perioden tok slutt etter ${r.untilMinutes} minutters spill.`;
+    else if (r.untilLevel > 0 && this.isTournament() && levelNo > r.untilLevel) reason = 'Rebuy-perioden er over.';
+    else if (r.untilMinutes > 0 && this.status !== 'waiting' && this.played() > r.untilMinutes * 60000) reason = 'Rebuy-perioden er over.';
     else if (p.place != null) reason = 'Du er ute av turneringen.';
     else if (r.maxPerPlayer > 0 && p.rebuys >= r.maxPerPlayer) reason = `Du har nådd grensen på ${r.maxPerPlayer} ${r.maxPerPlayer === 1 ? 'rebuy' : 'rebuys'}.`;
     else if (r.maxStackToRebuy === 0 && p.stack > 0) reason = 'Du kan gjøre rebuy når du er tom for chips.';
