@@ -460,8 +460,8 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
                 )}
                 <div className="felt__actions">
                   <button className="btn btn--quiet" onClick={() => { setDrawer(true); setTab('ledger'); }}>Vis oppgjøret</button>
-                  <button className="btn btn--act" onClick={copyResults}>Kopier resultater</button>
-                  <button className="btn btn--quiet" onClick={() => navigate('/')}>Nytt bord</button>
+                  <button className="btn btn--quiet" onClick={copyResults}>Kopier oppgjør</button>
+                  <a className="btn btn--quiet" href="/season" target="_blank" rel="noopener">Sesongoversikt</a>
                 </div>
               </div>
             ) : hand && (!hand.winners || view.status === 'running' || view.status === 'finished') ? (
@@ -677,7 +677,7 @@ export function TablePage({ tableId, navigate }: { tableId: string; navigate: (p
         {manualCopy && (
           <div className="sheet-wrap">
             <section className="sheet" role="dialog" aria-labelledby="copy-results-title">
-              <h2 id="copy-results-title" className="sheet__title">Kopier resultater</h2>
+              <h2 id="copy-results-title" className="sheet__title">Kopier oppgjør</h2>
               <textarea aria-label="Resultater til kopiering" readOnly autoFocus rows={9}
                 value={manualCopy} onFocus={(e) => e.currentTarget.select()} />
               <div className="sheet__actions">

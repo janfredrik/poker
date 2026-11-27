@@ -212,7 +212,7 @@ input, textarea { caret-color: var(--lamp-line); }
   border-radius: var(--radius);
   border: 1px solid transparent;
   font-weight: 650; font-size: 15px; letter-spacing: -0.005em;
-  white-space: nowrap;
+  white-space: nowrap; text-decoration: none;
   transition: background-color 160ms var(--ease-out), color 160ms, border-color 160ms, transform 120ms var(--ease-out), box-shadow 200ms;
 }
 .btn:active:not(:disabled) { transform: translateY(1px); }
