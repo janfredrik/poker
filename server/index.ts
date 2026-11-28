@@ -58,6 +58,8 @@ const allowCreate = ipLimiter(HOUR, 10);
 const allowDemo = ipLimiter(HOUR, 15);
 /** Live demo tables a single IP may have at once. */
 const MAX_DEMOS_PER_IP = 3;
+/** Live demo tables on the whole server. */
+const MAX_DEMOS = 50;
 const demoOwner = new Map<string, string>();
 
 /* ---------------- state ---------------- */
@@ -249,7 +251,8 @@ io.on('connection', (raw) => {
   }));
 
   s.on('demo:create', (input: { name?: string; bots?: number }, ack: Ack<{ tableId: string; token: string }>) => guard(ack, () => {
-    if (tables.size > 500) throw new GameError('Det er for mange åpne bord på serveren.');
+    // Demo tables get their own cap so they can never use up the room for real tables.
+    if (tables.size > 500 || demoOwner.size >= MAX_DEMOS) throw new GameError('Det er for mange åpne bord på serveren.');
     let mine = 0;
     for (const owner of demoOwner.values()) if (owner === ip) mine++;
     if (mine >= MAX_DEMOS_PER_IP || !allowDemo(ip)) throw new GameError('Du har mange demobord åpne. Prøv igjen om litt.');
