@@ -177,7 +177,7 @@ export function Seat({ seatNo, player, isYou, acting, turnLeft, stream, speaking
       </div>
       <div className="seat__meta">
         {winner ? (
-          <span className="seat__tag seat__tag--win">Vinner{formatChips(winner.amount)}{winner.hand ? ` · ${winner.hand}` : ''}</span>
+          <span className="seat__tag seat__tag--win">Vinner {formatChips(winner.amount)}</span>
         ) : state ? (
           <span className={`seat__tag ${player.folded ? 'seat__tag--fold' : ''}`}>{state}</span>
         ) : null}

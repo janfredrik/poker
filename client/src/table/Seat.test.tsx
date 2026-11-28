@@ -73,12 +73,12 @@ describe('Seat', () => {
     expect(screen.getByText('Fold').classList.contains('seat__tag--fold')).toBe(true);
   });
 
-  it('a winner shows the amount and hand instead of the last action', () => {
+  it('a winner shows the amount instead of the last action', () => {
     renderSeat({
       player: player({ id: 'p2', name: 'Mari', lastAction: 'Call' }),
       winner: { playerId: 'p2', amount: 840, hand: 'Two Pair', cards: [] },
     });
-    expect(screen.getByText(/Vinner.*840.*Two Pair/)).toBeTruthy();
+    expect(screen.getByText(/^Vinner 840$/)).toBeTruthy();
     expect(screen.queryByText('Call')).toBeNull();
   });
 

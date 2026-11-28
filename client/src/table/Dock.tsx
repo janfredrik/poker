@@ -25,10 +25,19 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
   const totalPot = useMemo(() => (hand ? hand.potTotal + view.players.reduce((s, p) => s + p.bet, 0) : 0), [hand, view.players]);
   const [raiseTo, setRaiseTo] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  // The sizing controls stay folded behind Raise, so a check or call is a choice between three buttons.
+  const [raiseOpen, setRaiseOpen] = useState(false);
 
   useEffect(() => {
     if (legal?.canRaise) setRaiseTo(legal.minRaiseTo);
   }, [legal?.canRaise, legal?.minRaiseTo, hand?.number, hand?.street]);
+  useEffect(() => {
+    setRaiseOpen(false);
+  }, [!!legal, hand?.number, hand?.street]);
+  const openRaise = (focus: boolean) => {
+    setRaiseOpen(true);
+    if (focus) requestAnimationFrame(() => { inputRef.current?.focus(); inputRef.current?.select(); });
+  };
 
   const potRaise = (frac: number) => {
     if (!legal || !hand) return 0;
@@ -78,11 +87,12 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
     if (!legal) return;
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
+      if (e.key === 'Escape' && (tag !== 'INPUT' || e.target === inputRef.current)) { setRaiseOpen(false); return; }
       if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
       const k = e.key.toLowerCase();
       if (k === 'f') { e.preventDefault(); onAction(legal.canCheck ? 'check' : 'fold'); }
       else if (k === 'c') { e.preventDefault(); onAction(legal.canCheck ? 'check' : 'call'); }
-      else if (k === 'r' && legal.canRaise) { e.preventDefault(); inputRef.current?.focus(); inputRef.current?.select(); }
+      else if (k === 'r' && legal.canRaise) { e.preventDefault(); openRaise(true); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -93,7 +103,8 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
   const rebuy = you.rebuy;
   const canShow = !!hand?.winners && me?.inHand && !me?.shownCards && you.holeCards.length > 0;
   const isBet = hand?.currentBet === 0;
-  const allInRaise = legal && raiseTo >= legal.maxRaiseTo;
+  const allInRaise = raiseOpen && !!legal && raiseTo >= legal.maxRaiseTo;
+  const allInCall = !!legal && !legal.canCheck && legal.callAmount >= (me?.stack ?? 0);
   const bb = Math.max(1, hand?.blinds.bb ?? 1);
   const canPre = seated && !myTurn && !!hand && !hand.winners && !!me?.inHand && !me.folded && !me.allIn;
 
@@ -123,10 +134,10 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         {myTurn ? (
           <>
             <span className="dock__label">
-              {legal!.canCheck ? 'Din tur' : 'Beløp for call'}
+              {legal!.canCheck ? 'Din tur · stack' : 'Beløp for call'}
               {hand?.usingBank ? ' · bruker tidsbanken' : view.settings.rules.timeBank.enabled && me ? ` · tidsbank ${Math.round(me.timeBankMs / 1000)} s` : ''}
             </span>
-            <span className="dock__big">{legal!.canCheck ? 'Check eller bet' : formatChips(legal!.callAmount)}</span>
+            <span className="dock__big">{formatChips(legal!.canCheck ? me?.stack ?? 0 : legal!.callAmount)}</span>
           </>
         ) : !seated ? (
           <>
@@ -156,7 +167,7 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
       <div className="dock__actions">
         {myTurn ? (
           <>
-            {legal!.canRaise && (
+            {legal!.canRaise && raiseOpen && (
               <div className="raise">
                 <div className="raise__presets" role="group" aria-label="Forhåndsvalg for raise">
                   <button className="chipbtn" onClick={() => setRaiseTo(legal!.minRaiseTo)}>Min</button>
@@ -198,16 +209,21 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
                 title={legal!.canCheck ? 'Du kan checke gratis' : undefined}>
                 {foldArmed ? 'Fold likevel?' : <>Fold <kbd>F</kbd></>}
               </button>
-              <button className="btn btn--act" disabled={busy} onClick={() => onAction(legal!.canCheck ? 'check' : 'call')}>
-                {legal!.canCheck ? 'Check' : legal!.callAmount >= (me?.stack ?? 0) ? `All-in ${formatChips(legal!.callAmount)}` : `Call ${formatChips(legal!.callAmount)}`}
+              <button className={`btn btn--act ${allInCall ? 'btn--allin' : ''}`} disabled={busy} onClick={() => onAction(legal!.canCheck ? 'check' : 'call')}>
+                {legal!.canCheck ? 'Check' : allInCall ? <AllIn amount={legal!.callAmount} /> : `Call ${formatChips(legal!.callAmount)}`}
                 <kbd>C</kbd>
               </button>
-              {legal!.canRaise && (
-                <button className="btn btn--act btn--raise" disabled={busy || raiseTo < legal!.minRaiseTo && raiseTo < legal!.maxRaiseTo} onClick={() => onAction('raise', clamp(raiseTo))}>
-                  {allInRaise ? 'All-in' : isBet ? 'Bet' : 'Raise til'} {formatChips(clamp(raiseTo))}
+              {legal!.canRaise && (raiseOpen ? (
+                <button className={`btn btn--act btn--raise ${allInRaise ? 'btn--allin' : ''}`} disabled={busy || raiseTo < legal!.minRaiseTo && raiseTo < legal!.maxRaiseTo} onClick={() => onAction('raise', clamp(raiseTo))}>
+                  {allInRaise ? <AllIn amount={clamp(raiseTo)} /> : `${isBet ? 'Bet' : 'Raise til'} ${formatChips(clamp(raiseTo))}`}
                   <kbd>R</kbd>
                 </button>
-              )}
+              ) : (
+                <button className="btn btn--act btn--raise" disabled={busy} aria-expanded={false} onClick={() => openRaise(false)}>
+                  {isBet ? 'Bet' : 'Raise'}
+                  <kbd>R</kbd>
+                </button>
+              ))}
             </div>
           </>
         ) : seated ? (
@@ -247,5 +263,15 @@ export function Dock({ view, onAction, onRebuy, onAddOn, onSitOut, onShow, busy,
         ) : null}
       </div>
     </section>
+  );
+}
+
+/** All-in is the one action that risks everything, so it says so under the amount. */
+function AllIn({ amount }: { amount: number }) {
+  return (
+    <span className="btn__two">
+      <span>All-in {formatChips(amount)}</span>
+      <small>hele stacken</small>
+    </span>
   );
 }

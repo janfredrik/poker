@@ -25,6 +25,7 @@ describe('Dock on your turn', () => {
     noButton(/^Check/);
     fireEvent.click(button(/^Call 10/));
     expect(onAction).toHaveBeenLastCalledWith('call');
+    fireEvent.click(button(/^Raise/));
     fireEvent.click(button(/^Raise til 40/));
     expect(onAction).toHaveBeenLastCalledWith('raise', 40);
   });
@@ -35,6 +36,7 @@ describe('Dock on your turn', () => {
     noButton(/^Call/);
     fireEvent.click(button(/^Check/));
     expect(onAction).toHaveBeenLastCalledWith('check');
+    fireEvent.click(button(/^Bet/));
     button(/^Bet 20/);
 
     onAction.mockClear();
@@ -51,13 +53,14 @@ describe('Dock on your turn', () => {
       you: { legal: legal({ callAmount: 300, canRaise: false, minRaiseTo: 0, maxRaiseTo: 0, bet: 0 }) },
     });
     renderDock(v);
-    button(/^All-in 300/);
+    expect(button(/^All-in 300/).textContent).toContain('hele stacken');
     noButton(/^Raise/);
     expect(screen.queryByRole('slider')).toBeNull();
   });
 
   it('raise presets and typed amounts stay between min and max', () => {
     const { onAction } = renderDock(view());
+    fireEvent.click(button(/^Raise/));
     fireEvent.click(button(/^All-in$/));
     fireEvent.click(button(new RegExp(`^All-in ${formatChips(1000)}`)));
     expect(onAction).toHaveBeenLastCalledWith('raise', 1000);
@@ -73,6 +76,7 @@ describe('Dock on your turn', () => {
 
   it('the + and − steps move one big blind and stop at the minimum', () => {
     renderDock(view());
+    fireEvent.click(button(/^Raise/));
     const minus = button(/Én big blind mindre/);
     expect((minus as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(button(/Én big blind mer/));
@@ -89,9 +93,35 @@ describe('Dock on your turn', () => {
     expect(onAction).toHaveBeenLastCalledWith('fold');
   });
 
+  it('the raise controls stay folded until Raise or R opens them, and Escape folds them again', () => {
+    const { onAction } = renderDock(view());
+    expect(screen.queryByRole('slider')).toBeNull();
+    noButton(/^Pot$/);
+    fireEvent.keyDown(window, { key: 'r' });
+    expect(screen.getByRole('slider')).toBeTruthy();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('slider')).toBeNull();
+    fireEvent.click(button(/^Raise/));
+    expect(onAction).not.toHaveBeenCalled();
+    button(/^Pot$/);
+  });
+
+  it('all-in says it is the whole stack, on both the call and the raise', () => {
+    renderDock(view());
+    fireEvent.click(button(/^Raise/));
+    fireEvent.click(button(/^All-in$/));
+    expect(button(new RegExp(`^All-in ${formatChips(1000)}`)).textContent).toContain('hele stacken');
+  });
+
+  it('when checking is free the headline is your stack, not words', () => {
+    renderDock(view({ hand: hand({ street: 'flop', currentBet: 0 }), you: { legal: legal({ canCheck: true, callAmount: 0, minRaiseTo: 20, bet: 0 }) } }));
+    expect(screen.getByText('Din tur · stack')).toBeTruthy();
+    expect(screen.queryByText('Check eller bet')).toBeNull();
+  });
+
   it('buttons are disabled while an action is on its way', () => {
     renderDock(view(), true);
-    for (const name of [/^Fold/, /^Call/, /^Raise til/]) expect((button(name) as HTMLButtonElement).disabled).toBe(true);
+    for (const name of [/^Fold/, /^Call/, /^Raise/]) expect((button(name) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

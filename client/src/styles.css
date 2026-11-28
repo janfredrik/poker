@@ -224,6 +224,12 @@ input, textarea { caret-color: var(--lamp-line); }
 .btn--quiet { background: rgb(var(--fg-rgb) / 0.07); color: var(--bone); border-color: var(--line); }
 .btn--quiet:hover:not(:disabled) { background: rgb(var(--fg-rgb) / 0.13); }
 .btn--quiet:disabled { color: var(--faint); }
+/* All-in keeps the lamp's colour but drops its fill, so it never reads as the same press as Check or Call. */
+.btn--act.btn--allin { background: transparent; color: var(--lamp-line); border: 2px solid var(--lamp-line); box-shadow: none; }
+.btn--act.btn--allin:hover:not(:disabled) { background: rgb(var(--fg-rgb) / 0.08); }
+.btn--act.btn--allin:disabled { border-color: var(--line); }
+.btn__two { display: grid; line-height: 1.1; text-align: left; }
+.btn__two small { font-size: 12px; font-weight: 600; color: var(--bone-2); }
 .btn--fold { background: transparent; color: var(--bone); border-color: var(--line-2); }
 .btn--fold:hover:not(:disabled) { background: rgb(var(--fg-rgb) / 0.08); }
 .btn--fold.is-armed { border-color: var(--bone); background: rgb(var(--fg-rgb) / 0.12); }
@@ -730,7 +736,11 @@ input, textarea { caret-color: var(--lamp-line); }
 .preact__opt.is-on { border-color: var(--lamp-line); color: var(--bone); }
 .dock__note { font-size: 13.5px; color: var(--muted); }
 
-.raise { display: grid; gap: 8px; width: min(100%, 520px); }
+.raise { display: grid; gap: 8px; width: min(100%, 520px); animation: rise 220ms var(--ease-out) both; }
+@media (pointer: coarse) {
+  .raise .chipbtn { min-height: 44px; padding: 0 14px; }
+  .raise__step { width: 44px; height: 44px; }
+}
 .raise__presets { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
 .raise__row { display: grid; grid-template-columns: auto 1fr auto 120px; gap: 8px; align-items: center; }
 .raise__step { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; font-size: 18px; line-height: 1; }
